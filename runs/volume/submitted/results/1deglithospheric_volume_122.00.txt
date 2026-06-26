@@ -1,0 +1,2 @@
+# con_volume, con_pro_earth(%), con_pro_crust(%), oce_volume, oce_pro_earth(%), oce_pro_crust(%)
+681391588.65882 0.06298 5.46124 725407549.22884 0.06704 5.81402

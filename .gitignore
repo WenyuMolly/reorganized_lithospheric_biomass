@@ -1,0 +1,26 @@
+.DS_Store
+Thumbs.db
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local/editor state
+.idea/
+.vscode/
+
+# Generated workflow outputs. The submitted volume inputs needed by the
+# oceanic biomass scripts can be added explicitly with git add -f.
+runs/**
+
+# Keep generated figures out of source control unless explicitly added.
+figures/generated/
+
+# Logs and temporary files
+*.log
+*.tmp

@@ -1,0 +1,20 @@
+/* DATA DESCRIPTION:
+Citation:	Expedition 357 Scientists (2016): Microbial cell abundance counted on flame-sterilized interior piece of rock samples from IODP Hole 357-M0072A [dataset]. PANGAEA, https://doi.org/10.1594/PANGAEA.867618
+Related to:	Frueh-Green, Gretchen L; Orcutt, Beth N; Green, Sophie; Cotterill, Carol; Expedition 357 Scientists (2016): Atlantis Massif Serpentinization and Life. International Ocean Discovery Program Preliminary Report, International Ocean Discovery Program, https://doi.org/10.14379/iodp.pr.357.2016
+Further details:	Exp357_QAQC_MBIO_1_PFT (URI: https://store.pangaea.de/Publications/IODP/Exp357/QAQC/Exp357_QAQC_MBIO_1_PFT.zip)
+	Exp357_QAQC_MBIO_2_SAM (URI: https://store.pangaea.de/Publications/IODP/Exp357/QAQC/Exp357_QAQC_MBIO_2_SAM.zip)
+	Exp357_QAQC_MBIO_3_CC (URI: https://store.pangaea.de/Publications/IODP/Exp357/QAQC/Exp357_QAQC_MBIO_3_CC.zip)
+Project(s):	Integrated Ocean Drilling Program / International Ocean Discovery Program (IODP) (URI: https://www.iodp.org/)
+Coverage:	LATITUDE: 30.129850 * LONGITUDE: -42.122050
+	DATE/TIME START: 2015-11-10T00:00:00 * DATE/TIME END: 2015-11-10T00:00:00
+	MINIMUM DEPTH, sediment/rock: 0.5 m * MAXIMUM DEPTH, sediment/rock: 0.5 m
+Event(s):	357-M0072A (AM-01A) * LATITUDE: 30.129850 * LONGITUDE: -42.122050 * DATE/TIME: 2015-11-10T00:00:00 * ELEVATION: -820.3 m * IGSN: https://doi.org/10.58100/IBCR0357EHF0001 * LOCATION: Atlantis Massif (URI: https://en.wikipedia.org/wiki/Atlantis_Massif) * CAMPAIGN: Exp357 * BASIS: James Cook (URI: https://en.wikipedia.org/wiki/RRS_James_Cook) * COMMENT: RD2, CTD: 30 7.79265N / 42 7.33742W
+Parameter(s):	Sample code/label (Sample label) * PI: Expedition 357 Scientists (https://www.pangaea.de/ddi?request=iodp-msp/AMSL_staff&title=Expedition+357+Scientists&format=html) * METHOD/DEVICE: DSDP/ODP/IODP sample designation (URI: hdl:10013/epic.27914.d001)
+	Area/locality (Area) * PI: Expedition 357 Scientists (https://www.pangaea.de/ddi?request=iodp-msp/AMSL_staff&title=Expedition+357+Scientists&format=html)
+	DEPTH, sediment/rock [m] (Depth sed) * GEOCODE * PI: Expedition 357 Scientists (https://www.pangaea.de/ddi?request=iodp-msp/AMSL_staff&title=Expedition+357+Scientists&format=html)
+	Bacteria, cells [#/cm**3] (Bac) * PI: Expedition 357 Scientists (https://www.pangaea.de/ddi?request=iodp-msp/AMSL_staff&title=Expedition+357+Scientists&format=html)
+License:	Creative Commons Attribution 3.0 Unported (CC-BY-3.0) (URI: https://creativecommons.org/licenses/by/3.0/)
+Size:	3 data points
+*/
+Sample label	Area	Depth sed [m]	Bac [#/cm**3]
+357-M0072A-1R-1	Central	0.5	827
