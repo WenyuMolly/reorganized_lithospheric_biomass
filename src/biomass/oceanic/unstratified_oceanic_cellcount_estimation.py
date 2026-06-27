@@ -30,6 +30,12 @@ dataset_group.add_argument("--include-shallow", action="store_true", help="Inclu
 parser.add_argument("--n-draws", type=int, default=1000, help="Number of Monte Carlo draws.")
 parser.add_argument("--seed", type=int, default=42, help="Random seed.")
 parser.add_argument("--output-dir", type=Path, default=None, help="Output directory.")
+parser.add_argument(
+    "--z122-scenario",
+    choices=["mc", "low", "base", "high"],
+    default="mc",
+    help="Depth treatment: mc preserves original maxdepth/maxdepth_sd sampling; low/base/high use maxdepth-sd, maxdepth, or maxdepth+sd.",
+)
 args = parser.parse_args()
 
 N_DRAWS = args.n_draws
@@ -121,6 +127,22 @@ def grid_area_cm2(lat_deg: float) -> float:
     d_cm = 11_132_000.0  # 111.32 km in cm
     return d_cm * d_cm * np.cos(lat_rad)
 
+def draw_z122_depth_km(row: pd.Series, rng: np.random.Generator, scenario: str) -> float:
+    """Return z122 depth for MC or deterministic uncertainty-bound scenarios."""
+    z_mean = float(row.get("maxdepth", np.nan))
+    z_sd = float(row.get("maxdepth_sd", 0.0) or 0.0)
+    z_sd = max(z_sd, 0.0) if np.isfinite(z_sd) else 0.0
+    if scenario == "low":
+        return float(max(z_mean - z_sd, 0.0)) if np.isfinite(z_mean) else np.nan
+    elif scenario == "base":
+        return float(z_mean)
+    elif scenario == "high":
+        return float(z_mean + z_sd) if np.isfinite(z_mean) else np.nan
+    else:
+        z = rng.normal(loc=z_mean, scale=z_sd) if (np.isfinite(z_mean) and z_sd > 0) else z_mean
+        z = z_mean if (not np.isfinite(z) or z <= 0) else z
+        return z_mean if (not np.isfinite(z) or z <= 0) else float(z)
+
 def add_segment_to_bins(z0_km: float, z1_km: float, density_cm3: float,
                         area_cm2: float, bins_km: np.ndarray, acc_vec: np.ndarray):
     """
@@ -154,15 +176,12 @@ for draw_idx in range(N_DRAWS):
     for _, r in merged.iterrows():
         lat, lon = float(r["lat"]), float(r["lon"])
 
-        # Perturb isotherm depth (km)
         z_mean = float(r.get("maxdepth", np.nan))
-        z_sd   = float(r.get("maxdepth_sd", 0.0) or 0.0)
-        z_pert = rng.normal(loc=z_mean, scale=z_sd) if (np.isfinite(z_mean) and z_sd > 0) else z_mean
-        if not np.isfinite(z_pert) or z_pert <= 0:
-            z_pert = z_mean
-        if not np.isfinite(z_pert) or z_pert <= 0:
+        z_pert = draw_z122_depth_km(r, rng, args.z122_scenario)
+        if not np.isfinite(z_pert):
             # If still invalid, skip this grid
             continue
+        z_pert = max(z_pert, 0.0)
 
         sed = float(r.get('Sed', 0.0) or 0.0)
         d1 = max(float(r.get('DLy1', 0.0) or 0.0) - sed, 0.0)

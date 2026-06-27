@@ -18,6 +18,12 @@ dataset_group.add_argument("--include-shallow", action="store_true", help="Inclu
 parser.add_argument("--n-draws", type=int, default=1000, help="Number of Monte Carlo draws.")
 parser.add_argument("--seed", type=int, default=42, help="Random seed.")
 parser.add_argument("--output-dir", type=Path, default=None, help="Output directory.")
+parser.add_argument(
+    "--z122-scenario",
+    choices=["mc", "low", "base", "high"],
+    default="mc",
+    help="Depth treatment: mc preserves original maxdepth/maxdepth_sd sampling; low/base/high use maxdepth-sd, maxdepth, or maxdepth+sd.",
+)
 args = parser.parse_args()
 
 EXCLUDE_SHALLOW = not args.include_shallow
@@ -124,6 +130,22 @@ def grid_area_cm2(lat_deg: float, res_deg: float = 1.0) -> float:
     area_m2 = dx * dy
     return area_m2 * 1e4  # m² → cm²
 
+def draw_z122_depth_km(row: pd.Series, rng: np.random.Generator, scenario: str) -> float:
+    """Return z122 depth for MC or deterministic uncertainty-bound scenarios."""
+    z_mean = float(row.get("maxdepth", np.nan))
+    z_sd = float(row.get("maxdepth_sd", 0.0) or 0.0)
+    z_sd = max(z_sd, 0.0) if np.isfinite(z_sd) else 0.0
+    if scenario == "low":
+        return float(max(z_mean - z_sd, 0.0)) if np.isfinite(z_mean) else np.nan
+    elif scenario == "base":
+        return float(z_mean)
+    elif scenario == "high":
+        return float(z_mean + z_sd) if np.isfinite(z_mean) else np.nan
+    else:
+        z = rng.normal(loc=z_mean, scale=z_sd) if (np.isfinite(z_mean) and z_sd > 0) else z_mean
+        z = z_mean if (not np.isfinite(z) or z <= 0) else z
+        return z_mean if (not np.isfinite(z) or z <= 0) else float(z)
+
 def accumulate_bins(u, m, l, mn, ucc, mcc, lcc, mncc, area_cm2, depth_bins_km):
     """
     Slice per-layer contributions into depth bins.
@@ -170,13 +192,8 @@ for _ in range(n_draws):
 
     for _, row in merged_df.iterrows():
         lat, lon = row["lat"], row["lon"]
-        maxdepth    = row["maxdepth"]                 # km
-        maxdepth_sd = row.get("maxdepth_sd", 0.0)     # km
-
-        # Perturb zmax (km); fall back to original if invalid
-        perturbed = (rng.normal(loc=maxdepth, scale=maxdepth_sd)
-                     if pd.notna(maxdepth_sd) and maxdepth_sd > 0 else maxdepth)
-        perturbed_depth = maxdepth if (not np.isfinite(perturbed) or perturbed <= 0) else perturbed
+        maxdepth = row["maxdepth"]                 # km
+        perturbed_depth = draw_z122_depth_km(row, rng, args.z122_scenario)
 
         # ECM crustal layer depths (km), subtracting sediment thickness
         sed = float(row.get("Sed", 0.0))

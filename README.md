@@ -141,6 +141,18 @@ uv run python scripts/oceanic/unstratified_power_fit.py --include-shallow
 uv run python scripts/oceanic/stratified_power_fit.py --include-shallow
 ```
 
+Oceanic geothermal z122 uncertainty sensitivity, using the shallow-excluded
+versions of all four oceanic biomass workflows:
+
+```bash
+uv run python scripts/sensitivity/summarize_oceanic_geothermal_z122_uncertainty.py
+```
+
+This runs the existing stratified/unstratified log10-bootstrap and power-law
+MC scripts with `--z122-scenario low`, `base`, and `high`, all with
+`--exclude-shallow`, `--n-draws 1000`, and `--seed 42`. Outputs are written to
+`results/tables/`.
+
 Oceanic cell-density sensitivity figure:
 
 ```bash

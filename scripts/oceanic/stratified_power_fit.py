@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TARGET = PROJECT_ROOT / "src" / "biomass" / "oceanic" / "stratified_power_fit.py"
 
 if any(arg in {"-h", "--help"} for arg in sys.argv[1:]):
-    print("usage: stratified_power_fit.py [--exclude-shallow | --include-shallow] [--n-draws N] [--seed SEED] [--output-dir DIR]")
+    print("usage: stratified_power_fit.py [--exclude-shallow | --include-shallow] [--n-draws N] [--seed SEED] [--output-dir DIR] [--z122-scenario {mc,low,base,high}]")
     print("\nRuns the stratified oceanic depth-power-law Monte Carlo workflow.")
     sys.exit(0)
 

@@ -10,6 +10,7 @@ from biomass.oceanic.stratified_power_fit import (
 from biomass.oceanic.unstratified_power_fit import (
     convert_cells_per_g_to_cm3,
     detect_depth_column_and_to_km,
+    draw_z122_depth_km,
     fit_power_law_log10 as fit_unstratified_power_law_log10,
     fit_unstratified_power_or_constant,
     grid_area_cm2,
@@ -59,3 +60,14 @@ def test_oceanic_power_law_covariance_matches_returned_a_b_order():
 
     np.testing.assert_allclose(unstratified_cov, expected_cov_ab)
     np.testing.assert_allclose(stratified_cov, expected_cov_ab)
+
+
+def test_oceanic_z122_scenarios_use_standard_deviation_bounds():
+    row = pd.Series({"maxdepth": 2.0, "maxdepth_sd": 0.5})
+    shallow_row = pd.Series({"maxdepth": 0.4, "maxdepth_sd": 0.8})
+    rng = np.random.default_rng(42)
+
+    assert draw_z122_depth_km(row, rng, "low") == 1.5
+    assert draw_z122_depth_km(row, rng, "base") == 2.0
+    assert draw_z122_depth_km(row, rng, "high") == 2.5
+    assert draw_z122_depth_km(shallow_row, rng, "low") == 0.0

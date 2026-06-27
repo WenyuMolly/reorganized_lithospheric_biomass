@@ -48,6 +48,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--n-draws", type=int, default=N_DRAWS, help="Number of Monte Carlo draws.")
     parser.add_argument("--seed", type=int, default=SEED, help="Random seed.")
     parser.add_argument("--output-dir", type=Path, default=None, help="Output directory.")
+    parser.add_argument(
+        "--z122-scenario",
+        choices=["mc", "low", "base", "high"],
+        default="mc",
+        help="Depth treatment: mc preserves original maxdepth/maxdepth_sd sampling; low/base/high use maxdepth-sd, maxdepth, or maxdepth+sd.",
+    )
     return parser.parse_args()
 
 # ---------------------- Helpers ---------------------------------------
@@ -59,6 +65,22 @@ def grid_area_cm2(lat_deg: float, res_deg: float = 1.0) -> float:
     dy = m_per_deg * res_deg
     area_m2 = dx * dy
     return area_m2 * 1e4  # m² -> cm²
+
+def draw_z122_depth_km(row: pd.Series, rng: np.random.Generator, scenario: str) -> float:
+    """Return z122 depth for MC or deterministic uncertainty-bound scenarios."""
+    z_mean = float(row.get("maxdepth", np.nan))
+    z_sd = float(row.get("maxdepth_sd", 0.0) or 0.0)
+    z_sd = max(z_sd, 0.0) if np.isfinite(z_sd) else 0.0
+    if scenario == "low":
+        return float(max(z_mean - z_sd, 0.0)) if np.isfinite(z_mean) else np.nan
+    elif scenario == "base":
+        return float(z_mean)
+    elif scenario == "high":
+        return float(z_mean + z_sd) if np.isfinite(z_mean) else np.nan
+    else:
+        z = rng.normal(loc=z_mean, scale=z_sd) if (np.isfinite(z_mean) and z_sd > 0) else z_mean
+        z = z_mean if (not np.isfinite(z) or z <= 0) else z
+        return z_mean if (not np.isfinite(z) or z <= 0) else float(z)
 
 def convert_cells_per_g_to_cm3(row: pd.Series) -> float:
     """Convert cells/g to cells/cm³ if needed; otherwise pass-through."""
@@ -329,15 +351,7 @@ def main():
         for cell_idx, (_, row) in enumerate(merged_df.iterrows()):
             lat, lon = float(row['lat']), float(row['lon'])
             maxdepth_km = float(row['maxdepth'])
-            maxdepth_sd_km = float(row.get('maxdepth_sd', 0.0) or 0.0)
-
-            # Depth perturbation
-            if maxdepth_sd_km > 0:
-                z_b = float(rng.normal(loc=maxdepth_km, scale=maxdepth_sd_km))
-                if not np.isfinite(z_b) or z_b <= 0:
-                    z_b = maxdepth_km
-            else:
-                z_b = maxdepth_km
+            z_b = draw_z122_depth_km(row, rng, args.z122_scenario)
             z_b = max(z_b, 0.0)
 
             # Basement coordinates (subtract sediment)
