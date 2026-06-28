@@ -47,8 +47,8 @@ SCENARIOS = {
     "high": "maxdepth + maxdepth_sd",
 }
 
-METHOD_MIN = 4.935e27
-METHOD_MAX = 13.78e27
+METHOD_MIN = 4.94e27
+METHOD_MAX = 15.55e27
 
 
 def parse_args() -> argparse.Namespace:

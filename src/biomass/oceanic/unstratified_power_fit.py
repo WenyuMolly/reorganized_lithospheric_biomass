@@ -250,7 +250,8 @@ def add_powerlaw_segment_to_bins(A: float, B: float,
                                  seg_top_km: float, seg_bot_km: float,
                                  area_cm2: float,
                                  bins_km: np.ndarray,
-                                 acc_vec: np.ndarray):
+                                 acc_vec: np.ndarray,
+                                 cap_density: float = np.inf):
     """
     Accumulate cells from a vertical segment [seg_top_km, seg_bot_km] into fixed bins.
     For each overlap with bin [b0,b1], compute layer-mean density over that sub-interval
@@ -274,6 +275,7 @@ def add_powerlaw_segment_to_bins(A: float, B: float,
             y_avg = layer_mean_density_from_params_km(A, B, top, bot)
             if not np.isfinite(y_avg) or y_avg <= 0:
                 continue
+            y_avg = min(y_avg, cap_density, DENSITY_CLIP_MAX)
             acc_vec[j] += y_avg * per_km_vol_cm3 * dz
 
 # ---------------------- Main -------------------------------------------
@@ -491,7 +493,7 @@ def main():
                 counts[dom] = cells
 
                 # --- NEW: accumulate into global depth bins by subdividing the layer
-                add_powerlaw_segment_to_bins(A, B, z0_km, z1_km, area_cm2, DEPTH_BINS_KM, by_depth_vec)
+                add_powerlaw_segment_to_bins(A, B, z0_km, z1_km, area_cm2, DEPTH_BINS_KM, by_depth_vec, cap_here)
 
             total_cells = counts["Upper Crust"] + counts["Middle Crust"] + counts["Lower Crust"] + counts["Mantle"]
 
