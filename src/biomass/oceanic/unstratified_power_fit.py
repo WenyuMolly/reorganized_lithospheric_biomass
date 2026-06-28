@@ -569,6 +569,24 @@ def main():
     pd.DataFrame(total_rows).to_csv(out_tot, index=False)
     print(f"[OK] Global totals saved: {out_tot}")
 
+    totals_by_draw_rows = []
+    for k, df in enumerate(all_samples):
+        uc = float(df["Upper Crust"].sum())
+        mc = float(df["Middle Crust"].sum())
+        lc = float(df["Lower Crust"].sum())
+        mn = float(df["Mantle"].sum())
+        totals_by_draw_rows.append({
+            "iter": f"iter_{k+1:04d}",
+            "Upper Crust": uc,
+            "Middle Crust": mc,
+            "Lower Crust": lc,
+            "Mantle": mn,
+            "Total": uc + mc + lc + mn,
+        })
+    out_tot_draw = os.path.join(OUT_DIR, "oceanic_cell_totals_by_draw.csv")
+    pd.DataFrame(totals_by_draw_rows).to_csv(out_tot_draw, index=False)
+    print(f"[OK] Global totals by draw saved: {out_tot_draw}")
+
     # 8) NEW: Global by-depth outputs (matrix + summary)
     by_depth_matrix = pd.DataFrame({
         "depth_top_km": DEPTH_BINS_KM[:-1],

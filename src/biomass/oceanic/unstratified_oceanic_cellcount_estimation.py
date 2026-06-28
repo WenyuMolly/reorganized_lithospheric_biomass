@@ -280,6 +280,17 @@ pd.DataFrame(totals).to_csv(
     index=False
 )
 
+totals_by_draw_rows = []
+for k, df in enumerate(all_draws):
+    row = {"iter": f"iter_{k+1:04d}"}
+    for L in ["Upper Crust", "Middle Crust", "Lower Crust", "Mantle", "Total"]:
+        row[L] = float(df[L].sum())
+    totals_by_draw_rows.append(row)
+pd.DataFrame(totals_by_draw_rows).to_csv(
+    f"{OUTDIR}/oceanic_cell_totals_by_draw.csv",
+    index=False
+)
+
 # ---------------- NEW: global by-depth outputs ----------------
 # 1) Matrix: rows = bins, columns = iter_0001..N
 by_depth_matrix = pd.DataFrame({

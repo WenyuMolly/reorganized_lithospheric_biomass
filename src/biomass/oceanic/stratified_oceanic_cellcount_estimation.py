@@ -292,6 +292,16 @@ for k in range(n_draws):
     by_layer_matrix[f"iter_{k+1:04d}"] = layer_totals_by_draw[k, :]
 by_layer_matrix.to_csv(f"{OUTDIR}/oceanic_cellcount_by_layer_matrix.csv", index=False)
 
+totals_by_draw_df = pd.DataFrame({
+    "iter": [f"iter_{k+1:04d}" for k in range(n_draws)],
+    "Upper Crust": layer_totals_by_draw[:, 0],
+    "Middle Crust": layer_totals_by_draw[:, 1],
+    "Lower Crust": layer_totals_by_draw[:, 2],
+    "Mantle": layer_totals_by_draw[:, 3],
+})
+totals_by_draw_df["Total"] = totals_by_draw_df[layers_for_totals].sum(axis=1)
+totals_by_draw_df.to_csv(f"{OUTDIR}/oceanic_cell_totals_by_draw.csv", index=False)
+
 by_layer_summary = []
 for j, layer in enumerate(layers_for_totals):
     vals = layer_totals_by_draw[:, j]
