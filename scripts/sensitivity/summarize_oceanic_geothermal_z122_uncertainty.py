@@ -11,7 +11,7 @@ import pandas as pd
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-RUN_ROOT = PROJECT_ROOT / "runs/oceanic/geothermal_z122_uncertainty/without_shallow"
+RUN_ROOT = PROJECT_ROOT / "runs/oceanic/geothermal_z122_uncertainty"
 TABLE_DIR = PROJECT_ROOT / "results/tables"
 
 METHODS = {
@@ -83,13 +83,27 @@ SCENARIOS = {
     "high": "maxdepth + maxdepth_sd",
 }
 
-METHOD_MIN = 4.94e27
-METHOD_MAX = 15.55e27
-MAIN_SHALLOW_EXCLUDED_TOTALS = {
-    "stratified-log10": 9.35e27,
-    "unstratified-log10": 4.94e27,
-    "stratified-power": 15.55e27,
-    "unstratified-power": 9.05e27,
+MAIN_TOTALS_BY_DATASET = {
+    "without-shallow": {
+        "stratified-log10": 9.35e27,
+        "unstratified-log10": 4.94e27,
+        "stratified-power": 15.55e27,
+        "unstratified-power": 9.05e27,
+    },
+    "with-shallow": {
+        "stratified-log10": 1.05e5 * 1e27,
+        "unstratified-log10": 4.88e4 * 1e27,
+        "stratified-power": 186.04e27,
+        "unstratified-power": 379.08e27,
+    },
+}
+DATASET_DIR = {
+    "without-shallow": "without_shallow",
+    "with-shallow": "with_shallow",
+}
+DATASET_FLAG = {
+    "without-shallow": "--exclude-shallow",
+    "with-shallow": "--include-shallow",
 }
 VALIDATION_RTOL = 1e-6
 
@@ -97,20 +111,46 @@ VALIDATION_RTOL = 1e-6
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Run and summarize shallow-excluded oceanic geothermal z122 uncertainty "
+            "Run and summarize oceanic geothermal z122 uncertainty "
             "using the existing oceanic biomass MC workflows."
         )
     )
     method_choices = ["all", *METHODS.keys()]
     parser.add_argument("--method", choices=method_choices, default="all", help="Oceanic biomass method to run.")
+    parser.add_argument(
+        "--dataset",
+        choices=["without-shallow", "with-shallow", "both"],
+        default="without-shallow",
+        help="Cell-density dataset to use. Default preserves the original shallow-excluded analysis.",
+    )
     parser.add_argument("--n-draws", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--reuse-existing", action="store_true", help="Skip a scenario run when its by-depth matrix already exists.")
+    parser.add_argument(
+        "--reuse-existing",
+        action="store_true",
+        help="Skip a scenario run when its matrix, global summary, and draw-level totals already exist.",
+    )
     return parser.parse_args()
 
 
 def selected_methods(method: str) -> list[str]:
     return list(METHODS) if method == "all" else [method]
+
+
+def selected_datasets(dataset: str) -> list[str]:
+    return ["without-shallow", "with-shallow"] if dataset == "both" else [dataset]
+
+
+def dataset_run_root(dataset: str) -> Path:
+    return RUN_ROOT / DATASET_DIR[dataset]
+
+
+def table_suffix(dataset: str) -> str:
+    if dataset == "without-shallow":
+        return ""
+    if dataset == "both":
+        return "_both"
+    return f"_{DATASET_DIR[dataset]}"
 
 
 def reusable_scenario_outputs(config: dict[str, object], out_dir: Path, n_draws: int) -> bool:
@@ -127,13 +167,20 @@ def reusable_scenario_outputs(config: dict[str, object], out_dir: Path, n_draws:
     return len(totals_by_draw) == n_draws
 
 
-def run_scenario(method: str, scenario: str, n_draws: int, seed: int, reuse_existing: bool) -> Path:
+def run_scenario(
+    method: str,
+    dataset: str,
+    scenario: str,
+    n_draws: int,
+    seed: int,
+    reuse_existing: bool,
+) -> Path:
     config = METHODS[method]
     script = config["script"]
     if not script.exists():
         raise FileNotFoundError(f"Could not locate oceanic biomass script for {method}: {script}")
 
-    out_dir = RUN_ROOT / method / scenario
+    out_dir = dataset_run_root(dataset) / method / scenario
     if reuse_existing and reusable_scenario_outputs(config, out_dir, n_draws):
         return out_dir
 
@@ -141,7 +188,7 @@ def run_scenario(method: str, scenario: str, n_draws: int, seed: int, reuse_exis
     cmd = [
         sys.executable,
         str(script),
-        "--exclude-shallow",
+        DATASET_FLAG[dataset],
         "--z122-scenario",
         scenario,
         "--n-draws",
@@ -281,6 +328,7 @@ def base_uses_deterministic_maxdepth(method: str, base_out_dir: Path) -> bool:
 
 def validation_issue(
     method: str,
+    dataset: str,
     totals_by_scenario: dict[str, pd.Series],
     matrix_totals_by_scenario: dict[str, pd.Series],
     summary_by_scenario: dict[str, dict[str, float]],
@@ -357,144 +405,176 @@ def main() -> None:
     paired_rows = []
     manuscript_rows = []
 
-    for method in selected_methods(args.method):
-        output_dirs = {
-            scenario: run_scenario(method, scenario, args.n_draws, args.seed, args.reuse_existing)
-            for scenario in ("low", "base", "high")
-        }
+    for dataset in selected_datasets(args.dataset):
+        dataset_run_root(dataset).mkdir(parents=True, exist_ok=True)
+        for method in selected_methods(args.method):
+            output_dirs = {
+                scenario: run_scenario(method, dataset, scenario, args.n_draws, args.seed, args.reuse_existing)
+                for scenario in ("low", "base", "high")
+            }
 
-        totals_by_scenario = {}
-        matrix_totals_by_scenario = {}
-        summary_by_scenario = {}
-        columns_by_scenario = {}
-        scenario_start_idx = len(scenario_rows)
-        for scenario in ("low", "base", "high"):
-            totals, iter_cols = read_global_totals_by_draw(method, output_dirs[scenario])
-            matrix_totals, matrix_iter_cols = read_matrix_draw_totals(method, output_dirs[scenario])
-            summary_stats = read_global_total_summary(method, output_dirs[scenario])
-            matrix_stats = summarize_draws(matrix_totals)
-            totals_by_scenario[scenario] = totals
-            matrix_totals_by_scenario[scenario] = matrix_totals
-            summary_by_scenario[scenario] = summary_stats
-            columns_by_scenario[scenario] = iter_cols
-            matrix_mean = matrix_stats["mean"]
-            summary_mean = summary_stats["mean"]
-            if matrix_iter_cols != iter_cols:
-                raise RuntimeError(f"By-depth matrix draw ids differ from totals-by-draw ids for {method} {scenario}")
-            scenario_rows.append({
+            totals_by_scenario = {}
+            matrix_totals_by_scenario = {}
+            summary_by_scenario = {}
+            columns_by_scenario = {}
+            scenario_start_idx = len(scenario_rows)
+            expected_main = MAIN_TOTALS_BY_DATASET[dataset][method]
+            for scenario in ("low", "base", "high"):
+                totals, iter_cols = read_global_totals_by_draw(method, output_dirs[scenario])
+                matrix_totals, matrix_iter_cols = read_matrix_draw_totals(method, output_dirs[scenario])
+                summary_stats = read_global_total_summary(method, output_dirs[scenario])
+                matrix_stats = summarize_draws(matrix_totals)
+                totals_by_scenario[scenario] = totals
+                matrix_totals_by_scenario[scenario] = matrix_totals
+                summary_by_scenario[scenario] = summary_stats
+                columns_by_scenario[scenario] = iter_cols
+                matrix_mean = matrix_stats["mean"]
+                summary_mean = summary_stats["mean"]
+                if matrix_iter_cols != iter_cols:
+                    raise RuntimeError(f"By-depth matrix draw ids differ from totals-by-draw ids for {dataset} {method} {scenario}")
+                has_expected_main = np.isfinite(expected_main)
+                scenario_rows.append({
+                    "dataset": dataset,
+                    "method": method,
+                    "scenario": scenario,
+                    "z122_definition": SCENARIOS[scenario],
+                    "n_draws": len(iter_cols),
+                    "cells_mean": summary_stats["mean"],
+                    "cells_median": summary_stats["median"],
+                    "cells_p2_5": summary_stats["p2_5"],
+                    "cells_p97_5": summary_stats["p97_5"],
+                    "matrix_cells_mean": matrix_mean,
+                    "matrix_vs_global_total_percent": (matrix_mean - summary_mean) / summary_mean * 100.0,
+                    "expected_main_total_mean": (
+                        expected_main if (scenario == "base" and has_expected_main) else np.nan
+                    ),
+                    "base_vs_expected_main_percent": (
+                        (summary_mean - expected_main) / expected_main * 100.0
+                        if (scenario == "base" and has_expected_main)
+                        else np.nan
+                    ),
+                    "source_output_dir": str(output_dirs[scenario]),
+                })
+
+            low = totals_by_scenario["low"]
+            base = totals_by_scenario["base"]
+            high = totals_by_scenario["high"]
+
+            paired_start_idx = len(paired_rows)
+            paired_metrics = {
+                "low_vs_base_percent": (low - base) / base * 100.0,
+                "high_vs_base_percent": (high - base) / base * 100.0,
+                "high_low_spread_percent_of_base": (high - low) / base * 100.0,
+                "high_low_fold": high / low,
+            }
+            for metric, values in paired_metrics.items():
+                stats = summarize_draws(values)
+                paired_rows.append({
+                    "dataset": dataset,
+                    "method": method,
+                    "metric": metric,
+                    "mean": stats["mean"],
+                    "median": stats["median"],
+                    "p2_5": stats["p2_5"],
+                    "p97_5": stats["p97_5"],
+                })
+
+            cells_low_mean = float(summary_by_scenario["low"]["mean"])
+            cells_base_mean = float(summary_by_scenario["base"]["mean"])
+            cells_high_mean = float(summary_by_scenario["high"]["mean"])
+            thermal_spread = cells_high_mean - cells_low_mean
+            validation = validation_issue(
+                method,
+                dataset,
+                totals_by_scenario,
+                matrix_totals_by_scenario,
+                summary_by_scenario,
+                columns_by_scenario,
+                output_dirs,
+            )
+            if np.isfinite(expected_main):
+                base_vs_main_pct = (cells_base_mean - expected_main) / expected_main * 100.0
+                if abs(base_vs_main_pct) > 1.0:
+                    print(
+                        f"[WARN] {dataset} {method}: deterministic z122 base differs from latest main "
+                        f"total by {base_vs_main_pct:.2f}%"
+                    )
+            else:
+                base_vs_main_pct = np.nan
+            validation_status = "passed" if validation is None else "failed"
+            validation_message = "" if validation is None else validation
+            for row in scenario_rows[scenario_start_idx:]:
+                row["validation_status"] = validation_status
+                row["validation_issue"] = validation_message
+            for row in paired_rows[paired_start_idx:]:
+                row["validation_status"] = validation_status
+                row["validation_issue"] = validation_message
+
+            if validation is None:
+                interpretation = (
+                    "Using grid-cell z122 uncertainty represented by maxdepth +/- maxdepth_sd, "
+                    f"the {dataset} {method} oceanic biomass estimate varies from {cells_low_mean:.3e} to "
+                    f"{cells_high_mean:.3e} cells around a baseline of {cells_base_mean:.3e} cells. "
+                    f"This corresponds to a high-low spread of {thermal_spread / cells_base_mean * 100.0:.2f}% "
+                    f"of the baseline estimate, or {cells_high_mean / cells_low_mean:.2f}-fold."
+                )
+            else:
+                interpretation = f"Validation failed ({validation}); sensitivity results should not be interpreted."
+
+            manuscript_rows.append({
+                "dataset": dataset,
                 "method": method,
-                "scenario": scenario,
-                "z122_definition": SCENARIOS[scenario],
-                "n_draws": len(iter_cols),
-                "cells_mean": summary_stats["mean"],
-                "cells_median": summary_stats["median"],
-                "cells_p2_5": summary_stats["p2_5"],
-                "cells_p97_5": summary_stats["p97_5"],
-                "matrix_cells_mean": matrix_mean,
-                "matrix_vs_global_total_percent": (matrix_mean - summary_mean) / summary_mean * 100.0,
-                "expected_main_shallow_excluded_mean": (
-                    MAIN_SHALLOW_EXCLUDED_TOTALS[method] if scenario == "base" else np.nan
-                ),
-                "base_vs_expected_main_percent": (
-                    (summary_mean - MAIN_SHALLOW_EXCLUDED_TOTALS[method])
-                    / MAIN_SHALLOW_EXCLUDED_TOTALS[method]
-                    * 100.0
-                    if scenario == "base"
-                    else np.nan
-                ),
-                "source_output_dir": str(output_dirs[scenario]),
+                "n_draws": len(columns_by_scenario["base"]),
+                "cells_low_mean": cells_low_mean,
+                "cells_base_mean": cells_base_mean,
+                "cells_high_mean": cells_high_mean,
+                "expected_main_total_mean": expected_main if np.isfinite(expected_main) else np.nan,
+                "base_vs_expected_main_percent": base_vs_main_pct,
+                "low_vs_base_percent_from_means": (cells_low_mean - cells_base_mean) / cells_base_mean * 100.0,
+                "high_vs_base_percent_from_means": (cells_high_mean - cells_base_mean) / cells_base_mean * 100.0,
+                "high_low_percent_of_base_from_means": thermal_spread / cells_base_mean * 100.0,
+                "high_low_fold_from_means": cells_high_mean / cells_low_mean,
+                "method_min": np.nan,
+                "method_max": np.nan,
+                "method_spread": np.nan,
+                "method_spread_basis": "",
+                "method_spread_n_methods": np.nan,
+                "thermal_spread_vs_method_spread_percent": np.nan,
+                "interpretation": interpretation,
             })
 
-        low = totals_by_scenario["low"]
-        base = totals_by_scenario["base"]
-        high = totals_by_scenario["high"]
+    for dataset in selected_datasets(args.dataset):
+        dataset_rows = [row for row in manuscript_rows if row["dataset"] == dataset]
+        base_vals = np.array([row["cells_base_mean"] for row in dataset_rows], dtype=float)
+        base_vals = base_vals[np.isfinite(base_vals)]
+        if base_vals.size < 2:
+            continue
+        method_min = float(np.min(base_vals))
+        method_max = float(np.max(base_vals))
+        method_spread = method_max - method_min
+        if method_spread <= 0:
+            continue
+        for row in dataset_rows:
+            thermal_spread = row["cells_high_mean"] - row["cells_low_mean"]
+            thermal_vs_method = thermal_spread / method_spread * 100.0
+            row["method_min"] = method_min
+            row["method_max"] = method_max
+            row["method_spread"] = method_spread
+            row["method_spread_basis"] = "dynamic_base_means_selected_methods"
+            row["method_spread_n_methods"] = int(base_vals.size)
+            row["thermal_spread_vs_method_spread_percent"] = thermal_vs_method
+            if not str(row["interpretation"]).startswith("Validation failed"):
+                relation = relation_to_method_spread(thermal_vs_method)
+                row["interpretation"] += (
+                    f" The thermal-boundary spread is {thermal_vs_method:.2f}% of the dynamic spread "
+                    f"among the selected base-case oceanic extrapolation methods for the {dataset} dataset, "
+                    f"indicating that geothermal-model uncertainty is {relation} extrapolation-method uncertainty."
+                )
 
-        paired_start_idx = len(paired_rows)
-        paired_metrics = {
-            "low_vs_base_percent": (low - base) / base * 100.0,
-            "high_vs_base_percent": (high - base) / base * 100.0,
-            "high_low_spread_percent_of_base": (high - low) / base * 100.0,
-            "high_low_fold": high / low,
-        }
-        for metric, values in paired_metrics.items():
-            stats = summarize_draws(values)
-            paired_rows.append({
-                "method": method,
-                "metric": metric,
-                "mean": stats["mean"],
-                "median": stats["median"],
-                "p2_5": stats["p2_5"],
-                "p97_5": stats["p97_5"],
-            })
-
-        cells_low_mean = float(summary_by_scenario["low"]["mean"])
-        cells_base_mean = float(summary_by_scenario["base"]["mean"])
-        cells_high_mean = float(summary_by_scenario["high"]["mean"])
-        method_spread = METHOD_MAX - METHOD_MIN
-        thermal_spread = cells_high_mean - cells_low_mean
-        thermal_vs_method = thermal_spread / method_spread * 100.0
-        validation = validation_issue(
-            method,
-            totals_by_scenario,
-            matrix_totals_by_scenario,
-            summary_by_scenario,
-            columns_by_scenario,
-            output_dirs,
-        )
-        base_vs_main_pct = (
-            (cells_base_mean - MAIN_SHALLOW_EXCLUDED_TOTALS[method])
-            / MAIN_SHALLOW_EXCLUDED_TOTALS[method]
-            * 100.0
-        )
-        if abs(base_vs_main_pct) > 1.0:
-            print(
-                f"[WARN] {method}: deterministic z122 base differs from latest main "
-                f"Shallow-Excluded total by {base_vs_main_pct:.2f}%"
-            )
-        validation_status = "passed" if validation is None else "failed"
-        validation_message = "" if validation is None else validation
-        for row in scenario_rows[scenario_start_idx:]:
-            row["validation_status"] = validation_status
-            row["validation_issue"] = validation_message
-        for row in paired_rows[paired_start_idx:]:
-            row["validation_status"] = validation_status
-            row["validation_issue"] = validation_message
-
-        if validation is None:
-            relation = relation_to_method_spread(thermal_vs_method)
-            interpretation = (
-                "Using grid-cell z122 uncertainty represented by maxdepth +/- maxdepth_sd, "
-                f"the {method} oceanic biomass estimate varies from {cells_low_mean:.3e} to "
-                f"{cells_high_mean:.3e} cells around a baseline of {cells_base_mean:.3e} cells. "
-                f"This corresponds to a high-low spread of {thermal_spread / cells_base_mean * 100.0:.2f}% "
-                f"of the baseline estimate, or {cells_high_mean / cells_low_mean:.2f}-fold. "
-                f"The thermal-boundary spread is {thermal_vs_method:.2f}% of the spread across the four "
-                f"preferred oceanic extrapolation methods, indicating that geothermal-model uncertainty is "
-                f"{relation} extrapolation-method uncertainty."
-            )
-        else:
-            interpretation = f"Validation failed ({validation}); sensitivity results should not be interpreted."
-
-        manuscript_rows.append({
-            "method": method,
-            "n_draws": len(columns_by_scenario["base"]),
-            "cells_low_mean": cells_low_mean,
-            "cells_base_mean": cells_base_mean,
-            "cells_high_mean": cells_high_mean,
-            "low_vs_base_percent_from_means": (cells_low_mean - cells_base_mean) / cells_base_mean * 100.0,
-            "high_vs_base_percent_from_means": (cells_high_mean - cells_base_mean) / cells_base_mean * 100.0,
-            "high_low_percent_of_base_from_means": thermal_spread / cells_base_mean * 100.0,
-            "high_low_fold_from_means": cells_high_mean / cells_low_mean,
-            "method_min": METHOD_MIN,
-            "method_max": METHOD_MAX,
-            "method_spread": method_spread,
-            "thermal_spread_vs_method_spread_percent": thermal_vs_method,
-            "interpretation": interpretation,
-        })
-
-    scenario_out = TABLE_DIR / "oceanic_geothermal_z122_uncertainty_by_scenario.csv"
-    paired_out = TABLE_DIR / "oceanic_geothermal_z122_uncertainty_paired_summary.csv"
-    manuscript_out = TABLE_DIR / "oceanic_geothermal_z122_uncertainty_manuscript_summary.csv"
+    suffix = table_suffix(args.dataset)
+    scenario_out = TABLE_DIR / f"oceanic_geothermal_z122_uncertainty_by_scenario{suffix}.csv"
+    paired_out = TABLE_DIR / f"oceanic_geothermal_z122_uncertainty_paired_summary{suffix}.csv"
+    manuscript_out = TABLE_DIR / f"oceanic_geothermal_z122_uncertainty_manuscript_summary{suffix}.csv"
 
     pd.DataFrame(scenario_rows).to_csv(scenario_out, index=False)
     pd.DataFrame(paired_rows).to_csv(paired_out, index=False)
@@ -505,7 +585,7 @@ def main() -> None:
     print(f"[OK] Wrote {manuscript_out}")
     for row in manuscript_rows:
         if row["interpretation"].startswith("Validation failed"):
-            print(f"[WARN] {row['method']}: {row['interpretation']}")
+            print(f"[WARN] {row['dataset']} {row['method']}: {row['interpretation']}")
 
 
 if __name__ == "__main__":
