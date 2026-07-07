@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -11,8 +13,9 @@ import pandas as pd
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-RUN_ROOT = PROJECT_ROOT / "runs/oceanic/geothermal_z122_uncertainty"
-TABLE_DIR = PROJECT_ROOT / "results/tables"
+RUN_ID = os.environ.get("BIOMASS_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
+RUN_ROOT = PROJECT_ROOT / "runs/oceanic/geothermal_z122_uncertainty" / RUN_ID
+TABLE_DIR = RUN_ROOT / "tables"
 
 METHODS = {
     "stratified-log10": {

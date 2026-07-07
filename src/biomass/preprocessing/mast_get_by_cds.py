@@ -37,37 +37,37 @@ import cdsapi
 # client.retrieve(dataset, request, "cds_2024_global_surface_temperature.nc")
 
 
-# import cdsapi
-
-# client = cdsapi.Client()
-
-# client.retrieve(
-#     "reanalysis-era5-single-levels-monthly-means",  # Use ERA5 monthly means
-#     {
-#         "variable": ["2m_temperature"],  # Near-surface air temperature
-#         "year": "2024",  # Change to the desired year
-#         "month": [f"{m:02d}" for m in range(1, 13)],  # Request all 12 months
-#         "time": "00:00",
-#         "format": "netcdf",
-#     },
-#     "era5_2024_monthly.nc"
-# )
 import cdsapi
 
-# Initialize CDS API client
 client = cdsapi.Client()
 
-# Request bottom seawater temperature from ORAS5
 client.retrieve(
-    "reanalysis-ora5",  # ORAS5 Ocean Reanalysis dataset
+    "reanalysis-era5-single-levels-monthly-means",  # Use ERA5 monthly means
     {
-        "variable": "sea_water_potential_temperature",  # Temperature variable
-        "depth": "bottom",  # Select bottom layer
-        "year": "2024",  # Year of interest
+        "variable": ["2m_temperature"],  # Near-surface air temperature
+        "year": "2024",  # Change to the desired year
         "month": [f"{m:02d}" for m in range(1, 13)],  # Request all 12 months
-        "time": "00:00",  # Midnight data
-        "format": "netcdf",  # Download format
+        "time": "00:00",
+        "format": "netcdf",
     },
-    "oras5_2024_bottom_temperature.nc"  # Save file as NetCDF
+    "era5_2024_monthly.nc"
 )
+# import cdsapi
+
+# # Initialize CDS API client
+# client = cdsapi.Client()
+
+# # Request bottom seawater temperature from ORAS5
+# client.retrieve(
+#     "reanalysis-ora5",  # ORAS5 Ocean Reanalysis dataset
+#     {
+#         "variable": "sea_water_potential_temperature",  # Temperature variable
+#         "depth": "bottom",  # Select bottom layer
+#         "year": "2024",  # Year of interest
+#         "month": [f"{m:02d}" for m in range(1, 13)],  # Request all 12 months
+#         "time": "00:00",  # Midnight data
+#         "format": "netcdf",  # Download format
+#     },
+#     "oras5_2024_bottom_temperature.nc"  # Save file as NetCDF
+# )
 

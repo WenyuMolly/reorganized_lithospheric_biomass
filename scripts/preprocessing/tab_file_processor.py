@@ -10,7 +10,7 @@ TARGET = (
     PROJECT_ROOT
     / "src"
     / "biomass"
-    / "oceanic"
+    / "preprocessing"
     / "tab_file_processor.py"
 )
 

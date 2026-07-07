@@ -35,6 +35,25 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from biomass.geothermal.plotting import plotPredictedTest, plot_corr_matrix, plot_feature
 
+def get_output_base_dir(attempt: str) -> Path:
+    """Return the base output directory for geothermal model outputs.
+    
+    All outputs are written under runs/geothermal/{Attempt}Attempt/ 
+    """
+    return PROJECT_ROOT / "runs" / "geothermal" / f"{attempt}Attempt"
+
+def get_plot_dir(attempt: str, run: str) -> Path:
+    """Return the plot output directory for geothermal model outputs."""
+    path = get_output_base_dir(attempt) / run / "Plots"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+def get_error_plot_dir(attempt: str, run: str) -> Path:
+    """Return the error analysis plot output directory."""
+    path = get_output_base_dir(attempt) / f"{run}error" / "Plots"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
 class xgboostPro:
     def __init__(self,args):
         self.args = args
@@ -107,7 +126,7 @@ class xgboostPro:
             plt.figure()
             box_plt = df.boxplot(column=[i])
             box_plt = box_plt.get_figure()
-            box_plt.savefig("%sAttempt/%s/box_plt_%s.png" % (Attempt,Run,i))
+            box_plt.savefig(str(get_plot_dir(Attempt, Run) / f"box_plt_{i}.png"))
         
         #filter
         try:
@@ -137,7 +156,9 @@ class xgboostPro:
         items.remove("gradient")
         # items.remove("is_land")
         features = items
-        df.to_csv(f"{Attempt}Attempt/%s/final_data.csv"%Run, index=False)
+
+        output_base = get_output_base_dir(Attempt)
+        df.to_csv(str(output_base / Run / "final_data.csv"), index=False)
         X=pd.DataFrame(df, columns=features)
         y=pd.DataFrame(df["gradient"])        
         # pd_X=pd.DataFrame(df, columns=features)
@@ -156,17 +177,23 @@ class xgboostPro:
         #     X=cp.asarray(X.to_numpy())
         #     y=cp.asarray(y.to_numpy())
         x_train, x_test, y_train, y_test = train_test_split(X,y,test_size=0.2,random_state=42,shuffle=True)
-        x_train.to_csv("%sAttempt/%s/x_train_data.csv" % (Attempt,Run), index=False)
-        y_train.to_csv("%sAttempt/%s/y_train_data.csv" % (Attempt,Run), index=False)
-        x_test.to_csv("%sAttempt/%s/x_test_data.csv" % (Attempt,Run), index=False)
-        y_test.to_csv("%sAttempt/%s/y_test_data.csv" % (Attempt,Run), index=False)
+
+
+
+
+        x_train.to_csv(str(output_base / Run / "x_train_data.csv"), index=False)
+        y_train.to_csv(str(output_base / Run / "y_train_data.csv"), index=False)
+        x_test.to_csv(str(output_base / Run / "x_test_data.csv"), index=False)
+        y_test.to_csv(str(output_base / Run / "y_test_data.csv"), index=False)
         return x_train, x_test, y_train, y_test, features           
     
     def train(self,x_train,y_train,Attempt,Run,params_algorithm):
         print("xgboost started training")
         self.GSxgb.fit(x_train, y_train)
         cv_results = pd.DataFrame(self.GSxgb.cv_results_)
-        cv_results.to_csv("%sAttempt/%s/xgboost_%s_cv_results.csv" % (Attempt,Run,params_algorithm), index=False)
+
+        output_base = get_output_base_dir(Attempt)
+        cv_results.to_csv(str(output_base / Run / f"xgboost_{params_algorithm}_cv_results.csv"), index=False)
         return self.GSxgb
     
     @staticmethod 
@@ -192,18 +219,26 @@ class xgboostPro:
             CB = Best['colsample_bytree']
             ETA = Best['eta']
         else:
-            LR = 0.01
-            MD = 11
-            SS = 5
-            Su = 0.7     
+            # Default parameters for non-search modes
+            NE = 1500
+            MD = 12
+            Su = 0.8
+            Gamma = 0.3
+            RL = 0.5
+            MW = 2
+            CB = 0.6
+            ETA = 0.05
         
+        output_base = get_output_base_dir(Attempt)
         M=np.vstack((model_score, r2, RMSE, MD, Su, NE, ETA, MW, Gamma, CB, RL)).T
-        np.savetxt('%sAttempt/%s/Scores_%s.txt' % (Attempt,Run,Run), M, fmt='%.3f', 
+
+        np.savetxt(str(output_base / Run / f'Scores_{Run}.txt'), M, fmt='%.3f', 
                 header='modelScore r2 RMSE MaxDepth subsample n_estimators eta min_child_weight gamma colsample_bytree reg_lambda')
 
         y_pred = y_pred[:,np.newaxis]
         Corr=np.hstack((y_test, y_pred))
-        np.savetxt('%sAttempt/%s/Y_%s.txt' % (Attempt,Run,Run), Corr, fmt='%.3f', 
+
+        np.savetxt(str(output_base / Run / f'Y_{Run}.txt'), Corr, fmt='%.3f', 
                 header='Actual Predicted')
 
         print('model score:', model_score)
@@ -238,18 +273,30 @@ class xgboostPro:
             CB = Best['colsample_bytree']
             ETA = Best['eta']
         else:
-            LR = 0.01
-            MD = 11
-            SS = 5
-            Su = 0.7     
+
+
+
+
+            # Default parameters for non-search modes
+            NE = 1500
+            MD = 12
+            Su = 0.8
+            Gamma = 0.3
+            RL = 0.5
+            MW = 2
+            CB = 0.6
+            ETA = 0.05
         
+        output_base = get_output_base_dir(Attempt)
         M=np.vstack((model_score, r2, RMSE, MD, Su, NE, ETA, MW, Gamma, CB, RL)).T
-        np.savetxt('%sAttempt/%serror/Error_Scores_%s.txt' % (Attempt,Run,Run), M, fmt='%.3f', 
+
+        np.savetxt(str(output_base / f"{Run}error" / f"Error_Scores_{Run}.txt"), M, fmt='%.3f', 
                 header='modelScore r2 RMSE MaxDepth subsample n_estimators eta min_child_weight gamma colsample_bytree reg')
 
         y_pred = y_pred[:,np.newaxis]
         Corr=np.hstack((y, y_pred))
-        np.savetxt('%sAttempt/%s/Error_Y_%s.txt' % (Attempt,Run,Run), Corr, fmt='%.3f', 
+
+        np.savetxt(str(output_base / f"{Run}error" / f"Error_Y_{Run}.txt"), Corr, fmt='%.3f', 
                 header='Actual Predicted')
 
         print('model score:', model_score)
@@ -259,9 +306,11 @@ class xgboostPro:
         plot_feature(model.best_estimator_.feature_importances_,features,Attempt,Run)
 
     def save_model(self):
+        output_base = get_output_base_dir(self.args.Attempt)
         model_s = pickle.dumps(self.GSxgb)
         # save model
-        with open('%sAttempt/%s/myModel%s.model'%(self.args.Attempt,self.args.Run,self.args.Attempt),'wb+') as f:#'wb+'means written in binary
+
+        with open(str(output_base / self.args.Run / f"myModel{self.args.Attempt}.model"),'wb+') as f:#'wb+'means written in binary
             f.write(model_s)
         f.close() 
     
@@ -307,21 +356,22 @@ if __name__ == "__main__":
     parser.add_argument('--BPnet', type=bool, default=False)
     parser.add_argument('--is_land', action="store_true", default=False, help="choose data of continents or oceans")
     parser.add_argument('--if_inference', action="store_true", default=False, help="choose if use the trained model to inference")
-    parser.add_argument('--omodel_path', default= '1stAttempt/oceanic_final/myModel1st.model', help="choose model for predicting the oceanic data")
-    parser.add_argument('--cmodel_path', default= '1stAttempt/continental_final/myModel1st.model', help="choose model for predicting the continental data")
+
+
+    parser.add_argument('--omodel_path', default= 'runs/geothermal/1stAttempt/oceanic_final/myModel1st.model', help="choose model for predicting the oceanic data")
+    parser.add_argument('--cmodel_path', default= 'runs/geothermal/1stAttempt/continental_final/myModel1st.model', help="choose model for predicting the continental data")
     
     args = parser.parse_args()
     args_dict = vars(args)
-    if not os.path.exists(args.Attempt + 'Attempt/' + args.Run +'/'):
-        os.makedirs(args.Attempt + 'Attempt/' + '/' + args.Run +'/' )
-    if not os.path.exists(args.Attempt + 'Attempt/' + '/'  + args.Run +'/' + "Plots/"):
-        os.makedirs(args.Attempt + 'Attempt/' + '/'  + args.Run +'/' + "Plots/") 
-    if not os.path.exists(args.Attempt + 'Attempt/' + '/'  + args.Run +'/' + "Plots/"):
-        os.makedirs(args.Attempt + 'Attempt/' + '/'  + args.Run +'/' + "Plots/") 
-    if not os.path.exists(args.Attempt + 'Attempt/' + '/'  + args.Run +'error/' + "Plots/"):
-        os.makedirs(args.Attempt + 'Attempt/' + '/'  + args.Run +'error/' + "Plots/") 
+    
+    # Create output directories under runs/geothermal/{Attempt}Attempt/
+    output_base = get_output_base_dir(args.Attempt)
+    (output_base / args.Run).mkdir(parents=True, exist_ok=True)
+    (output_base / args.Run / "Plots").mkdir(parents=True, exist_ok=True)
+    (output_base / f"{args.Run}error").mkdir(parents=True, exist_ok=True)
+    (output_base / f"{args.Run}error" / "Plots").mkdir(parents=True, exist_ok=True)
 
-    with open('%sAttempt/%s/arguments.json'%(args.Attempt,args.Run), 'w') as file:
+    with open(str(output_base / args.Run / 'arguments.json'), 'w') as file:
         json.dump(args_dict, file, indent=4)
 
     if args.if_inference:
@@ -330,68 +380,56 @@ if __name__ == "__main__":
         continental_model = xgboostPro.load_model(args.cmodel_path)
         ocean_features = ['RTP-BZ-400-05', 'Volcanos', 'YoungRift', 'LithoRef18-1deg', 'Trench', 'TopoI1', 'MeanCurvature-TopoIso-corr', 
                              'Susceptibility-Sz-LitMod-Aus17-Afr', 'Ridge',	'binned-SL2013-2deg', 'lon', 'lat',	'Depth2Moho', 'VP1', 'VP3']
-        # ocean_features = ['LAB', 'Curie', 'elevation', 'Moho', 'Magnetic', 'Ridge', 'Susceptibility', 'tectonicunit', 'Transform', 'Volcanos', 
-                        #   'YoungRift', 'VP1', 'VP2', 'VP3', 'VS3', 'lat', 'lon']
                           
         X_o = pd.DataFrame(df_io, columns=ocean_features)
         y_o= ocean_model.predict(X_o)
         df_io['gradient'] = y_o
-        df_io.to_csv("%sAttempt/inference_oceanic.csv"%args.Attempt, index=False)
-        # continental_features = ['RTP','LAB','Moho','Magnetic','Ridge','Susceptibility','tectonicunit','Topo','Transform',
-        #                   'Volcanos','YoungRift','lat','lon']
+        df_io.to_csv(str(output_base / "inference_oceanic.csv"), index=False)
+        
         continental_features = ['RTP-BZ-400-05', 'Volcanos', 'YoungRift', 'LithoRef18-1deg', 'Trench', 'TopoI1', 'MeanCurvature-TopoIso-corr', 
                              'Susceptibility-Sz-LitMod-Aus17-Afr', 'Ridge',	'binned-SL2013-2deg', 'lon', 'lat',	'Depth2Moho', 'VP1', 'VS3']
         X_c = pd.DataFrame(df_ic, columns=continental_features)
         y_c= continental_model.predict(X_c)
         df_ic['gradient'] = y_c
-        df_ic.to_csv("%sAttempt/inference_continental.csv"%args.Attempt, index=False)
+        df_ic.to_csv(str(output_base / "inference_continental.csv"), index=False)
+        
         final_ocean = pd.concat([df_nio,df_io], ignore_index=True)
         final_continental = pd.concat([df_nic,df_ic], ignore_index=True)
-        final_ocean.to_csv("%sAttempt/total_oceanic.csv"%args.Attempt, index=False)
-        final_continental.to_csv("%sAttempt/total_continental.csv"%args.Attempt, index=False)
+        final_ocean.to_csv(str(output_base / "total_oceanic.csv"), index=False)
+        final_continental.to_csv(str(output_base / "total_continental.csv"), index=False)
     
     elif args.BPnet == False:
-        
-        if not os.path.exists(args.Attempt + 'Attempt/' + args.Run +'/'):
-            os.makedirs(args.Attempt + 'Attempt/' + args.Run +'/' )
-        if not os.path.exists(args.Attempt + 'Attempt/' + args.Run +'/' + "Plots/"):
-            os.makedirs(args.Attempt + 'Attempt/' + args.Run +'/' + "Plots/")
-        
         if args.run_type == 'train':
             xgboost_pro = xgboostPro(args)
-            xgboost_pro.init_model() # 
-            x_train, x_test, y_train, y_test,features= xgboostPro.load_data(args.data_path,args.Attempt,args.Run,args.is_land)
+            xgboost_pro.init_model()
+            x_train, x_test, y_train, y_test, features = xgboostPro.load_data(args.data_path, args.Attempt, args.Run, args.is_land)
             
-            trained_model = xgboost_pro.train(x_train,y_train,args.Attempt,args.Run,args.params_algorithm)
-            xgboost_pro.test(trained_model,args.params_algorithm,x_train,y_train,x_test,y_test,args.Attempt,args.Run,features)
-            xgboost_pro.error_estimation(trained_model,args.params_algorithm,x_train,y_train,x_test,y_test,args.Attempt,args.Run,features)            
+            trained_model = xgboost_pro.train(x_train, y_train, args.Attempt, args.Run, args.params_algorithm)
+            xgboost_pro.test(trained_model, args.params_algorithm, x_train, y_train, x_test, y_test, args.Attempt, args.Run, features)
+            xgboost_pro.error_estimation(trained_model, args.params_algorithm, x_train, y_train, x_test, y_test, args.Attempt, args.Run, features)
             xgboost_pro.save_model()
             
         elif args.run_type == 'test':
-            x_train, x_test, y_train, y_test, features = xgboostPro.load_data(args.data_path,args.Attempt,args.Run,is_land=args.is_land)
+            x_train, x_test, y_train, y_test, features = xgboostPro.load_data(args.data_path, args.Attempt, args.Run, is_land=args.is_land)
             local_model = xgboostPro.load_model(args.cmodel_path)
-            xgboostPro.test(local_model,args.params_algorithm,x_train,y_train,x_test,y_test,args.Attempt,args.Run,features)
+            xgboostPro.test(local_model, args.params_algorithm, x_train, y_train, x_test, y_test, args.Attempt, args.Run, features)
 
     else:
         from BPNet.BPnet import *
-        if not os.path.exists(args.Attempt + 'Attempt/' + args.Run +'/'):
-            os.makedirs(args.Attempt + 'Attempt/' + args.Run +'/' )
-        if not os.path.exists(args.Attempt + 'Attempt/' + args.Run +'/' + "Plots/"):
-            os.makedirs(args.Attempt + 'Attempt/' + args.Run +'/' + "Plots/")       
         parser.add_argument('--model_list', type=list, default=[14,500,1000,1000,500,500,1])
-        parser.add_argument('--epochs', type=int,default= 1000)
-        parser.add_argument('--Learning_rate', type=float,default= 0.01)
+        parser.add_argument('--epochs', type=int, default=1000)
+        parser.add_argument('--Learning_rate', type=float, default=0.01)
 
         args = parser.parse_args()
         
-        x_train, x_test, y_train, y_test,features = xgboostPro.load_data(args.data_path,args.Attempt,args.Run,is_land=args.is_land,use_bpnet=True)
+        x_train, x_test, y_train, y_test, features = xgboostPro.load_data(args.data_path, args.Attempt, args.Run, is_land=args.is_land, use_bpnet=True)
 
         bp_net = bpNetPro(args)
         bp_net.init_model()
         if torch.cuda.is_available():
             bp_net.model.cuda()
-            bp_net.train(x_train.cuda(),y_train.cuda())
+            bp_net.train(x_train.cuda(), y_train.cuda())
         else:
-            bp_net.train(x_train,y_train)
+            bp_net.train(x_train, y_train)
         bp_net.model.cpu()
-        bp_net.test(bp_net.model,x_test,y_test)
+        bp_net.test(bp_net.model, x_test, y_test)

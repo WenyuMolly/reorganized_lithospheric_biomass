@@ -6,9 +6,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def get_output_base_dir(attempt: str) -> Path:
+    """Return the base output directory for geothermal model outputs."""
+    return PROJECT_ROOT / "runs" / "geothermal" / f"{attempt}Attempt"
+
 
 def _plot_dir(attempt: str, run: str) -> Path:
-    path = Path(f"{attempt}Attempt") / str(run) / "Plots"
+    path = get_output_base_dir(attempt) / run / "Plots"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _error_plot_dir(attempt: str, run: str) -> Path:
+    path = get_output_base_dir(attempt) / f"{run}error" / "Plots"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -32,6 +45,12 @@ def plotPredictedTest(y_true, y_pred, attempt: str, run: str) -> None:
     y_true = np.asarray(y_true).reshape(-1)
     y_pred = np.asarray(y_pred).reshape(-1)
 
+    # Determine if this is an error analysis plot
+    if run.endswith("error"):
+        plot_dir = _error_plot_dir(attempt, run[:-6])  # Remove 'error' suffix
+    else:
+        plot_dir = _plot_dir(attempt, run)
+
     fig, ax = plt.subplots(figsize=(5.5, 5.5))
     ax.scatter(y_true, y_pred, s=14, alpha=0.7)
     finite = np.isfinite(y_true) & np.isfinite(y_pred)
@@ -46,7 +65,7 @@ def plotPredictedTest(y_true, y_pred, attempt: str, run: str) -> None:
     ax.set_title(f"Observed vs. predicted ({run})")
     ax.grid(alpha=0.25)
     fig.tight_layout()
-    fig.savefig(_plot_dir(attempt, run) / "predicted_vs_observed.png", dpi=300)
+    fig.savefig(plot_dir / "predicted_vs_observed.png", dpi=300)
     plt.close(fig)
 
 
@@ -55,6 +74,12 @@ def plot_feature(importances, features, attempt: str, run: str) -> None:
     values = np.asarray(importances, dtype=float)
     order = np.argsort(values)
 
+    # Determine if this is an error analysis plot
+    if run.endswith("error"):
+        plot_dir = _error_plot_dir(attempt, run[:-6])  # Remove 'error' suffix
+    else:
+        plot_dir = _plot_dir(attempt, run)
+
     fig_h = max(5, 0.35 * len(features))
     fig, ax = plt.subplots(figsize=(8, fig_h))
     ax.barh(np.asarray(features)[order], values[order])
@@ -62,6 +87,5 @@ def plot_feature(importances, features, attempt: str, run: str) -> None:
     ax.set_title(f"XGBoost feature importance ({run})")
     ax.grid(axis="x", alpha=0.25)
     fig.tight_layout()
-    fig.savefig(_plot_dir(attempt, run) / "feature_importance.png", dpi=300)
+    fig.savefig(plot_dir / "feature_importance.png", dpi=300)
     plt.close(fig)
-

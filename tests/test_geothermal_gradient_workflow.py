@@ -14,7 +14,7 @@ import pytest
 pytest.importorskip("sklearn")
 pytest.importorskip("xgboost")
 
-from biomass.geothermal.baseline_xgboost import xgboostPro
+from biomass.geothermal.baseline_xgboost import xgboostPro, get_output_base_dir
 
 
 @dataclass
@@ -58,9 +58,12 @@ def test_geothermal_gradient_model_trains_and_predicts_on_small_dataset(tmp_path
     _synthetic_training_frame().to_csv(data_path, index=False)
 
     args = Args()
-    output_dir = Path(f"{args.Attempt}Attempt") / args.Run
-    (output_dir / "Plots").mkdir(parents=True)
-    (Path(f"{args.Attempt}Attempt") / f"{args.Run}error" / "Plots").mkdir(parents=True)
+    
+    # Use new path structure: runs/geothermal/{Attempt}Attempt/{Run}/
+    output_base = get_output_base_dir(args.Attempt)
+    output_dir = output_base / args.Run
+    (output_dir / "Plots").mkdir(parents=True, exist_ok=True)
+    (output_base / f"{args.Run}error" / "Plots").mkdir(parents=True, exist_ok=True)
 
     x_train, x_test, y_train, y_test, features = xgboostPro.load_data(
         data_path,
