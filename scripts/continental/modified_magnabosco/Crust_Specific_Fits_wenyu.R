@@ -14,7 +14,18 @@ suppressPackageStartupMessages({
 })
 
 ## ---------- 0) basic path ----------
-script_dir <- dirname(normalizePath(sys.frame(1)$ofile))
+script_dir <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  if (length(file_arg) > 0) {
+    return(dirname(normalizePath(sub("^--file=", "", file_arg[[1]]))))
+  }
+  ofile <- tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  if (!is.null(ofile)) {
+    return(dirname(normalizePath(ofile)))
+  }
+  normalizePath(getwd())
+})
 project_root <- normalizePath(file.path(script_dir, "../../.."))
 input_dir <- file.path(project_root, "data/processed/continental/modified_magnabosco")
 output_dir <- file.path(project_root, "runs/continental/latest/modified_magnabosco")

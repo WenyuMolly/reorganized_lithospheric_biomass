@@ -6,7 +6,18 @@ library(glmnet)
 library(fields)
 library(nlstools)
 
-script_dir <- dirname(normalizePath(sys.frame(1)$ofile))
+script_dir <- local({
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  if (length(file_arg) > 0) {
+    return(dirname(normalizePath(sub("^--file=", "", file_arg[[1]]))))
+  }
+  ofile <- tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  if (!is.null(ofile)) {
+    return(dirname(normalizePath(ofile)))
+  }
+  normalizePath(getwd())
+})
 project_root <- normalizePath(file.path(script_dir, "../../.."))
 input_dir <- file.path(project_root, "data/processed/continental/original_magnabosco")
 output_dir <- file.path(project_root, "runs/continental/latest/original_magnabosco")
@@ -166,5 +177,4 @@ proc.time() - ptm
 write.table(cv.biomass,file = "origin_glm_depthtempZ122_Med_HF_cv.biomass.csv",sep=",",row.names=FALSE,col.names=FALSE)
 write.table(cv.error,file = "origin_glm_depthtempZ122_Med_HF_cv.error.csv",sep=",",row.names=FALSE,col.names=FALSE)
 write.table(cv.byGridResult, file = 'origin_glm_depthtempZ122_Med_HF_cvGridResult.csv',sep=',',row.names=FALSE,col.names=FALSE)
-
 
