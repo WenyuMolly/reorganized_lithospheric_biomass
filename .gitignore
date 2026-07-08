@@ -16,7 +16,15 @@ venv/
 
 # Generated workflow outputs. The submitted volume inputs needed by the
 # oceanic biomass scripts can be added explicitly with git add -f.
-runs/**
+runs/*
+!runs/geothermal/
+!runs/geothermal/1stAttempt/
+!runs/geothermal/1stAttempt/total_continental.csv
+!runs/geothermal/1stAttempt/total_oceanic.csv
+!runs/geothermal/1stAttempt/oceanic_final/
+!runs/geothermal/1stAttempt/oceanic_final/myModel1st.model
+!runs/geothermal/1stAttempt/continental_final/
+!runs/geothermal/1stAttempt/continental_final/myModel1st.model
 
 # Keep generated figures out of source control unless explicitly added.
 figures/generated/
