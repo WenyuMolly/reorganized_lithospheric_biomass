@@ -3,8 +3,8 @@
 import argparse
 from pathlib import Path
 
+from biomass.io import PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 

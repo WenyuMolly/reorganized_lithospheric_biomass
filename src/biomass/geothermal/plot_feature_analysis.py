@@ -27,6 +27,8 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score, root_mean_squared_error
 from xgboost import XGBRegressor
 
+from biomass.io import PROJECT_ROOT
+
 
 # ---------- Utilities ----------
 def read_y(path: str, y_col: str | None):
@@ -127,7 +129,7 @@ def main():
     ap.add_argument("--domain", default="oceanic", choices=["oceanic", "continental"],
                     help="Choose which set of paths to use.")
     ap.add_argument("--y-col", default=None, help="Optional target column name.")
-    default_out_dir = Path(__file__).resolve().parents[3] / "figures" / "generated"
+    default_out_dir = PROJECT_ROOT / "figures" / "generated"
     ap.add_argument("--out-csv", default=str(default_out_dir / "feature_combo_results_oceanic.csv"), help="Output CSV.")
     ap.add_argument("--out-fig", default=str(default_out_dir / "feature_combo_lofo_deltas_oceanic.png"), help="Output figure.")
     ap.add_argument("--sort-by", default="delta_r2",
@@ -140,7 +142,7 @@ def main():
     ap.add_argument("--model", default=None, help="Override pickled model path.")
     args = ap.parse_args()
 
-    project_root = Path(__file__).resolve().parents[3]
+    project_root = PROJECT_ROOT
     geothermal_root = project_root / "runs" / "geothermal"
     presets = {
         "oceanic": {

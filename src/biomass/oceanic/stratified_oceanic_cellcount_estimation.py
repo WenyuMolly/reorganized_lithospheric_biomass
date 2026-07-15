@@ -8,9 +8,9 @@ import numpy as np
 import pandas as pd
 from scipy.stats import mode
 
-# ---------------------------- Config ----------------------------
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+from biomass.io import PROJECT_ROOT
 
+# ---------------------------- Config ----------------------------
 parser = argparse.ArgumentParser(description="Run stratified oceanic log10-bootstrap biomass estimates.")
 dataset_group = parser.add_mutually_exclusive_group()
 dataset_group.add_argument("--exclude-shallow", action="store_true", help="Exclude shallow/seawater-contacted samples.")

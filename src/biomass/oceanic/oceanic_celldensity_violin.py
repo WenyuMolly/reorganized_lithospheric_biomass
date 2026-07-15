@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
+from biomass.io import PROJECT_ROOT
+
 # ==========================================================
 # FILE
 # ==========================================================
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 INFILE = PROJECT_ROOT / "data/raw/oceanic/oceanic_cell_densities.xlsx"
 OUTDIR = PROJECT_ROOT / "figures/generated"
 OUTDIR.mkdir(parents=True, exist_ok=True)

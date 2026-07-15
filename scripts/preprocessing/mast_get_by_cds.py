@@ -3,10 +3,9 @@ from __future__ import annotations
 
 import os
 import runpy
-from pathlib import Path
 
+from biomass.io import PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TARGET = PROJECT_ROOT / "src" / "biomass" / "preprocessing" / "mast_get_by_cds.py"
 
 (PROJECT_ROOT / "data" / "raw" / "mast").mkdir(parents=True, exist_ok=True)

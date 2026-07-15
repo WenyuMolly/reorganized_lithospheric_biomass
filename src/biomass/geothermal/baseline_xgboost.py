@@ -30,9 +30,7 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import root_mean_squared_error, r2_score
 from sklearn.utils import shuffle
 from sklearn.preprocessing import MinMaxScaler
-import sys 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
+from biomass.io import PROJECT_ROOT
 from biomass.geothermal.plotting import plotPredictedTest, plot_corr_matrix, plot_feature
 
 def get_output_base_dir(attempt: str) -> Path:

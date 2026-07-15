@@ -2,6 +2,13 @@
 
 Code and data products for estimating rock-hosted lithospheric biomass from geothermal-gradient reconstructions, 122 °C habitable-depth calculations, and continental/oceanic cell-density extrapolations.
 
+## Licence
+
+Project-authored code, documentation, and project-authored data are released
+under the [Creative Commons Attribution 4.0 International License](LICENSE).
+Third-party data and model inputs retain their original licences and citation
+requirements; see [`data/README.md`](data/README.md).
+
 ## Repository Layout
 
 ```text
@@ -42,10 +49,15 @@ uv run python scripts/preprocessing/tab_file_processor.py --help
 
 The Python `uv` environment does not install R or R packages. Install R and the
 packages required by the Magnabosco continental scripts before running the
-continental workflows in Step 6. These R scripts are legacy entry points that
-read from `data/processed/continental/` and write rerun outputs to
-`runs/continental/latest/`. Packages imported by the scripts include
-`foreach`, `doParallel`, `glmnet`, `fields`, `nlstools`, and `ggplot2`.
+continental workflows in Step 6. Verify the local R environment with:
+
+```bash
+Rscript scripts/continental/check_environment.R
+```
+
+The scripts require `foreach`, `doParallel`, `glmnet`, `fields`, `nlstools`,
+and `ggplot2`. Each completed continental run saves `r_session_info.txt` with
+the R version and loaded-package provenance alongside its numerical outputs.
 
 ## Workflow
 
@@ -222,26 +234,30 @@ Oceanic scripts read `data/raw/oceanic/oceanic_cell_densities.xlsx`, `data/raw/o
 
 ### 6. Run Continental Lithospheric Biomass Estimates
 
-Modified continental workflow:
+The Python wrapper runs every R script in a workflow with one shared,
+timestamped run identifier. Modified continental workflow:
 
 ```bash
-Rscript scripts/continental/modified_magnabosco/Depth_and_Temperature_Fits_wenyu.R
-Rscript scripts/continental/modified_magnabosco/Depth_and_Temperature_GLM_wenyu.R
-Rscript scripts/continental/modified_magnabosco/Crust_Specific_Fits_wenyu.R
+uv run python scripts/continental/run_workflow.py \
+  --workflow modified_magnabosco
 ```
 
 Original comparison workflow:
 
 ```bash
-Rscript scripts/continental/original_magnabosco/Depth_and_Temperature_Fits_origin.R
-Rscript scripts/continental/original_magnabosco/Depth_and_Temperature_GLM_origin.R
-Rscript scripts/continental/original_magnabosco/Crust_Specific_Fits_origin.R
+uv run python scripts/continental/run_workflow.py \
+  --workflow original_magnabosco
 ```
 
-Continental scripts read from `data/processed/continental/` and write rerun outputs to `runs/continental/latest/`.
+Pass `--run-id NAME` to assign a meaningful shared output name. The resulting
+files are written to `runs/continental/<run-id>/<workflow>/`. The underlying
+R scripts can still be called directly, but then set `BIOMASS_RUN_ID` first to
+keep all scripts in the same output directory.
 
 ## Data Notes
 
+- See [`data/README.md`](data/README.md) for data provenance, citation, and
+  third-party redistribution notes.
 - `data/raw/mast/` contains source files used to prepare mean annual surface temperature.
 - `data/raw/oceanic/` contains oceanic cell-density inputs, ECM1 layer information, and PANGAEA TAB files.
 - `data/raw/continental/` contains continental cell-count input data.

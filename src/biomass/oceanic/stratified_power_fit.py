@@ -12,9 +12,10 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Tuple, Any, List
 
+from biomass.io import PROJECT_ROOT
+
 # ---------------------- Configuration ---------------------------------
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 OUT_DIR = PROJECT_ROOT / "runs/oceanic/stratified_power_law_mc_by_depth_with_shallow"
 
 RES_DEG = 1.0          # grid area resolution in degrees

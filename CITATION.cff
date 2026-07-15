@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software or its project-authored data, please cite it as below."
+title: "Data and Code for Global Lithospheric Biomass Estimation"
+type: software
+version: 1.1.0
+date-released: 2026-07-15
+license: CC-BY-4.0
+doi: 10.5281/zenodo.18918711
+repository-code: "https://github.com/WenyuMolly/reorganized_lithospheric_biomass"
+url: "https://zenodo.org/records/18918711"
+authors:
+  - family-names: Zhao
+    given-names: Wenyu
+    affiliation: Zhejiang University
+    orcid: "https://orcid.org/0009-0003-1804-6517"
+  - family-names: Smith
+    given-names: Harrison
+    affiliation: Earth-Life Science Institute
+    orcid: "https://orcid.org/0000-0001-8806-9659"
+  - family-names: ZhangZhou
+    given-names: J
+    affiliation: Zhejiang University
+    orcid: "https://orcid.org/0000-0003-0107-0548"

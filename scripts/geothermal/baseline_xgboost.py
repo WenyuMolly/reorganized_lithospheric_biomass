@@ -4,10 +4,9 @@ from __future__ import annotations
 import os
 import runpy
 import sys
-from pathlib import Path
 
+from biomass.io import PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TARGET = PROJECT_ROOT / "src" / "biomass" / "geothermal" / "baseline_xgboost.py"
 
 if any(arg in {"-h", "--help"} for arg in sys.argv[1:]):

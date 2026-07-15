@@ -19,8 +19,10 @@ def test_continental_workflow_scripts_use_project_data_and_runs_directories():
     for script in scripts:
         text = script.read_text()
         assert "data/processed/continental" in text or "data/raw/continental" in text
-        assert "runs/continental/latest" in text
+        assert 'Sys.getenv("BIOMASS_RUN_ID"' in text
+        assert 'file.path(project_root, "runs", "continental"' in text
         assert "dir.create(output_dir" in text
+        assert "r_session_info.txt" in text
 
 
 def test_continental_inputs_and_reference_outputs_are_available():
@@ -38,3 +40,20 @@ def test_continental_inputs_and_reference_outputs_are_available():
 
     assert (PROJECT_ROOT / "runs/continental/submitted/modified_magnabosco").exists()
     assert (PROJECT_ROOT / "runs/continental/submitted/original_magnabosco").exists()
+
+
+def test_continental_environment_check_lists_required_packages():
+    check_script = PROJECT_ROOT / "scripts/continental/check_environment.R"
+    text = check_script.read_text()
+
+    for package in ("foreach", "doParallel", "glmnet", "fields", "nlstools", "ggplot2"):
+        assert f'"{package}"' in text
+
+
+def test_continental_python_wrapper_is_available():
+    wrapper = PROJECT_ROOT / "scripts/continental/run_workflow.py"
+    text = wrapper.read_text()
+
+    assert "run_workflow(" in text
+    assert "--workflow" in text
+    assert "--run-id" in text

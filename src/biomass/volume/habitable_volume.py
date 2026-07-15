@@ -9,6 +9,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from biomass.io import PROJECT_ROOT
+
 # resolution is not certain
 # drop elevation in the features
 
@@ -67,15 +69,14 @@ class lithoVolume:
         return volume_sum
 
 def parse_opt():
-    project_root = Path(__file__).resolve().parents[3]
     run_id = os.environ.get("BIOMASS_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
     parser = argparse.ArgumentParser()
     parser.add_argument('--resolution', type=float, default=1, help='the resolution of bin method')
-    parser.add_argument('--continental_file', type=str, default=str(project_root / 'runs/geothermal/1stAttempt/total_continental.csv'), help='the path of continental gradient file')
-    parser.add_argument('--oceanic_file', type=str, default=str(project_root / 'runs/geothermal/1stAttempt/total_oceanic.csv'), help='the path of oceanic gradient file')
+    parser.add_argument('--continental_file', type=str, default=str(PROJECT_ROOT / 'runs/geothermal/1stAttempt/total_continental.csv'), help='the path of continental gradient file')
+    parser.add_argument('--oceanic_file', type=str, default=str(PROJECT_ROOT / 'runs/geothermal/1stAttempt/total_oceanic.csv'), help='the path of oceanic gradient file')
     parser.add_argument('--temperature', type=float, default=122, help='the extreme temperature of life')
-    parser.add_argument('--mast_file', type=str, default=str(project_root / 'data/processed/mast/global_mean_temperature_1deg.csv'), help='the path of mast file')
-    parser.add_argument('--output_dir', type=str, default=str(project_root / 'runs/volume' / run_id), help='directory for generated volume outputs')
+    parser.add_argument('--mast_file', type=str, default=str(PROJECT_ROOT / 'data/processed/mast/global_mean_temperature_1deg.csv'), help='the path of mast file')
+    parser.add_argument('--output_dir', type=str, default=str(PROJECT_ROOT / 'runs/volume' / run_id), help='directory for generated volume outputs')
     return parser.parse_known_args()[0]
 
 def earth_propotion(value):

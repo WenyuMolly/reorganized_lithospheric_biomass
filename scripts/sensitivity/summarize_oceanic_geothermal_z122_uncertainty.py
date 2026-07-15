@@ -11,8 +11,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from biomass.io import PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RUN_ID = os.environ.get("BIOMASS_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
 RUN_ROOT = PROJECT_ROOT / "runs/oceanic/geothermal_z122_uncertainty" / RUN_ID
 TABLE_DIR = RUN_ROOT / "tables"

@@ -1,4 +1,6 @@
 ## Depth power fit that is regionally specific 
+library(ggplot2)
+
 script_dir <- local({
   args <- commandArgs(trailingOnly = FALSE)
   file_arg <- grep("^--file=", args, value = TRUE)
@@ -13,11 +15,13 @@ script_dir <- local({
 })
 project_root <- normalizePath(file.path(script_dir, "../../.."))
 input_dir <- file.path(project_root, "data/processed/continental/original_magnabosco")
-output_dir <- file.path(project_root, "runs/continental/latest/original_magnabosco")
+run_id <- Sys.getenv("BIOMASS_RUN_ID", unset = "")
+if (identical(run_id, "")) run_id <- format(Sys.time(), "%Y%m%d_%H%M%S")
+output_dir <- file.path(project_root, "runs", "continental", run_id, "original_magnabosco")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+capture.output(sessionInfo(), file = file.path(output_dir, "r_session_info.txt"))
 setwd(output_dir)
 
-library(ggplot2)
 gridCells = read.csv(file.path(input_dir, "metadata_by_grid.csv"),stringsAsFactors = FALSE)
 GreenlandFID = c(3774:3776,3759:3762,3737:3742,3711:3715,3681:3685,3639:3643,3584:3588,3522:3525,3452:3454,3378:3380)
 AntarcFID = 3791:4163 # These are FID_1 on TC's documents already corrected in CM

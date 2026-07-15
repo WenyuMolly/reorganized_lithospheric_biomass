@@ -1,0 +1,33 @@
+{
+  "title": "Data and Code for Global Lithospheric Biomass Estimation",
+  "description": "Code and project-authored data products for estimating rock-hosted lithospheric biomass from geothermal-gradient reconstructions, 122 degrees C habitable-depth calculations, and continental and oceanic cell-density extrapolations. Third-party inputs retain their original licenses and citation requirements; see data/README.md.",
+  "version": "1.1.0",
+  "upload_type": "dataset",
+  "access_right": "open",
+  "license": "CC-BY-4.0",
+  "creators": [
+    {
+      "name": "Zhao, Wenyu",
+      "affiliation": "Zhejiang University",
+      "orcid": "0009-0003-1804-6517"
+    },
+    {
+      "name": "Smith, Harrison",
+      "affiliation": "Earth-Life Science Institute",
+      "orcid": "0000-0001-8806-9659"
+    },
+    {
+      "name": "ZhangZhou, J",
+      "affiliation": "Zhejiang University",
+      "orcid": "0000-0003-0107-0548"
+    }
+  ],
+  "keywords": [
+    "lithospheric biomass",
+    "geothermal gradient",
+    "subsurface biosphere",
+    "habitable volume",
+    "oceanic crust",
+    "continental crust"
+  ]
+}

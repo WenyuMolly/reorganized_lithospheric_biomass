@@ -13,8 +13,11 @@ script_dir <- local({
 })
 project_root <- normalizePath(file.path(script_dir, "../../.."))
 input_dir <- file.path(project_root, "data/processed/continental/original_magnabosco")
-output_dir <- file.path(project_root, "runs/continental/latest/original_magnabosco")
+run_id <- Sys.getenv("BIOMASS_RUN_ID", unset = "")
+if (identical(run_id, "")) run_id <- format(Sys.time(), "%Y%m%d_%H%M%S")
+output_dir <- file.path(project_root, "runs", "continental", run_id, "original_magnabosco")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+capture.output(sessionInfo(), file = file.path(output_dir, "r_session_info.txt"))
 setwd(output_dir)
 
 gridCells = read.csv(file.path(input_dir, "metadata_by_grid.csv"),stringsAsFactors = FALSE)

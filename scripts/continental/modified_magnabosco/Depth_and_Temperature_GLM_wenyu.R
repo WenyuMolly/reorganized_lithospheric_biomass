@@ -36,8 +36,11 @@ script_dir <- local({
 })
 project_root <- normalizePath(file.path(script_dir, "../../.."))
 input_dir <- file.path(project_root, "data/processed/continental/modified_magnabosco")
-output_dir <- file.path(project_root, "runs/continental/latest/modified_magnabosco")
+run_id <- Sys.getenv("BIOMASS_RUN_ID", unset = "")
+if (identical(run_id, "")) run_id <- format(Sys.time(), "%Y%m%d_%H%M%S")
+output_dir <- file.path(project_root, "runs", "continental", run_id, "modified_magnabosco")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+capture.output(sessionInfo(), file = file.path(output_dir, "r_session_info.txt"))
 setwd(output_dir)
 
 # -------------------------------

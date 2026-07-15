@@ -16,15 +16,15 @@ Summary
 
 Outputs
 -------
-- results/unstratified_power_law_mc_without_shallow/domain_power_fit_global.csv
-- results/unstratified_power_law_mc_without_shallow/domain_power_fit_global.json
-- results/unstratified_power_law_mc_without_shallow/oceanic_cell_counts_power_mc.csv
+- runs/oceanic/<run_id>/unstratified_power_law/<dataset>/domain_power_fit_global.csv
+- runs/oceanic/<run_id>/unstratified_power_law/<dataset>/domain_power_fit_global.json
+- runs/oceanic/<run_id>/unstratified_power_law/<dataset>/oceanic_cell_counts_power_mc.csv
   (per-grid summary, per-layer mean/std/quantiles)
-- results/unstratified_power_law_mc_without_shallow/oceanic_cell_totals_power_mc.csv
+- runs/oceanic/<run_id>/unstratified_power_law/<dataset>/oceanic_cell_totals_power_mc.csv
   (global totals per layer & total, across MC draws)
-- results/unstratified_power_law_mc_without_shallow/oceanic_cellcount_by_depth_matrix_unstrat_power.csv
+- runs/oceanic/<run_id>/unstratified_power_law/<dataset>/oceanic_cellcount_by_depth_matrix_unstrat_power.csv
   (global-by-depth matrix: rows=bins, cols=iter_0001..)
-- results/unstratified_power_law_mc_without_shallow/oceanic_cellcount_by_depth_summary_unstrat_power.csv
+- runs/oceanic/<run_id>/unstratified_power_law/<dataset>/oceanic_cellcount_by_depth_summary_unstrat_power.csv
   (global-by-depth summary with Mean/Median/2.5%/97.5%/Std)
 """
 import os
@@ -36,8 +36,9 @@ from typing import Dict, Any, Tuple
 import numpy as np
 import pandas as pd
 
+from biomass.io import PROJECT_ROOT
+
 # ---------------------- Config ----------------------
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 OUT_DIR = PROJECT_ROOT / "runs/oceanic/unstratified_power_law_mc_by_depth_with_shallow"
 
 RES_DEG = 1.0           # grid resolution (deg)

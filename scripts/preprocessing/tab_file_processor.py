@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import runpy
-from pathlib import Path
 
+from biomass.io import PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TARGET = (
     PROJECT_ROOT
     / "src"
