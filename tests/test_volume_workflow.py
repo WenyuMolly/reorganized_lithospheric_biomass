@@ -56,7 +56,17 @@ def test_habitable_volume_calculation_writes_expected_outputs(tmp_path):
     )
 
     output_table = output_dir / "inference_and_depth_to_122.0_calculation_continental.csv"
+    clipped_gradient = np.clip(
+        np.array([30.1, 40.1]),
+        np.percentile([30.1, 40.1], 1),
+        np.percentile([30.1, 40.1], 99),
+    )
+    expected_volume = sum(
+        111.32 * abs(np.cos(np.radians(lat))) * 111.32 * (122.0 - surface_temp) / gradient
+        for lat, surface_temp, gradient in zip([0.5, 1.5], [15.0, 12.0], clipped_gradient)
+    )
     assert volume > 0
+    assert np.isclose(volume, expected_volume)
     assert output_table.exists()
     assert (output_dir / "continental_habitable_volume_result.txt").exists()
 

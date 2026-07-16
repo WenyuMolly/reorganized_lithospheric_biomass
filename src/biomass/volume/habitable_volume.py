@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 import argparse
+import math
 import os
 import time
 from datetime import datetime
@@ -39,7 +40,10 @@ class lithoVolume:
             )
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        gradient = df['gradient'].astype(float) + 0.1
+        df['maxdepth'] = np.nan
+        df['maxdepth_sd'] = np.nan
+        df['volume'] = np.nan
+        gradient = df['gradient'].map(lambda x: x + 0.1)
 
         # Clip gradient to 1st and 99th percentile
         lower = np.percentile(gradient, 1)
@@ -67,32 +71,50 @@ class lithoVolume:
                 .mean()
                 .rename(columns={"Mean_Temperature_C": "_mast_temperature"})
             )
-            df["_mast_lat"] = df["lat"].map(_lat_to_1deg_center)
-            df["_mast_lon"] = df["lon"].map(_lon_to_1deg_center)
-            df = df.merge(mast_lookup, on=["_mast_lat", "_mast_lon"], how="left", validate="many_to_one")
-            unmatched = df["_mast_temperature"].isna()
+            grid_coordinates = pd.DataFrame(
+                {
+                    "_row": np.arange(len(df)),
+                    "lat": df["lat"].to_numpy(),
+                    "lon": df["lon"].to_numpy(),
+                    "_mast_lat": df["lat"].map(_lat_to_1deg_center),
+                    "_mast_lon": df["lon"].map(_lon_to_1deg_center),
+                }
+            )
+            matched_temperature = grid_coordinates.merge(
+                mast_lookup,
+                on=["_mast_lat", "_mast_lon"],
+                how="left",
+                validate="many_to_one",
+            ).sort_values("_row")
+            unmatched = matched_temperature["_mast_temperature"].isna()
             if unmatched.any():
-                examples = df.loc[unmatched, ["lat", "lon", "_mast_lat", "_mast_lon"]].head(5)
+                examples = matched_temperature.loc[
+                    unmatched, ["lat", "lon", "_mast_lat", "_mast_lon"]
+                ].head(5)
                 raise ValueError(
                     f"No MAST temperature for {int(unmatched.sum())} continental grid cells. "
                     f"Example coordinates:\n{examples.to_string(index=False)}"
                 )
-            surface_temperature = df["_mast_temperature"].to_numpy(dtype=float)
+            surface_temperature = matched_temperature["_mast_temperature"].to_numpy(dtype=float)
         else:
-            surface_temperature = np.full(len(df), 4.0, dtype=float)
+            surface_temperature = None
 
-        gradient = np.asarray(gradient, dtype=float)
-        latitudes = df["lat"].to_numpy(dtype=float)
-        lon_len = 111.32 * np.abs(np.cos(np.radians(latitudes))) * resolution
-        square_km2 = lon_len * 111.32 * resolution
-        depth_km = (temperature - surface_temperature) / gradient
-        depth_sd = (temperature - surface_temperature) / gradient**2 * rmse
+        # Retain the established per-cell calculation; only MAST lookup above
+        # has changed to make geographic coordinates robust.
+        volume_sum = 0
+        for i, g in enumerate(gradient):
+            lat, lon = df.loc[i, ['lat', 'lon']]
+            lonLen = 111.32 * abs(math.cos(math.radians(lat))) * resolution
+            square_km2 = lonLen * 111.32 * resolution
+            T0 = surface_temperature[i] if domain == 'continental' else 4.0
+            depth_km = (temperature - T0) / g
+            depth_sd = (temperature - T0) / g**2 * rmse
 
-        df["maxdepth"] = depth_km
-        df["maxdepth_sd"] = depth_sd
-        df["volume"] = square_km2 * depth_km
-        volume_sum = float(df["volume"].sum())
-        df.drop(columns=["_mast_lat", "_mast_lon", "_mast_temperature"], errors="ignore", inplace=True)
+            df.at[i, 'maxdepth'] = depth_km
+            df.at[i, 'maxdepth_sd'] = depth_sd
+            cell_vol = square_km2 * depth_km
+            df.at[i, 'volume'] = cell_vol
+            volume_sum += cell_vol
 
         df.to_csv(output_dir / ("inference_and_depth_to_%.1f_calculation_%s.csv" % (temperature, domain)), index=False)
         print('The %s lithospheric volume is %.5f km^3' % (domain, volume_sum))
