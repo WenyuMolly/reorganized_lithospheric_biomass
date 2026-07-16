@@ -64,3 +64,46 @@ def test_habitable_volume_calculation_writes_expected_outputs(tmp_path):
     assert {"maxdepth", "maxdepth_sd", "volume"}.issubset(result.columns)
     assert np.isfinite(result["volume"]).all()
     assert (result["maxdepth"] > 0).all()
+
+
+def test_continental_volume_normalizes_longitude_before_mast_lookup(tmp_path):
+    gradient_file = tmp_path / "gradients.csv"
+    mast_file = tmp_path / "mast.csv"
+    output_dir = tmp_path / "volume_outputs"
+
+    pd.DataFrame({"lat": [0.0], "lon": [359.75], "gradient": [30.0]}).to_csv(gradient_file, index=False)
+    pd.DataFrame(
+        {
+            "Latitude": [0.5],
+            "Longitude": [-0.5],
+            "Mean_Temperature_C": [15.0],
+        }
+    ).to_csv(mast_file, index=False)
+
+    volume = lithoVolume(Namespace()).calcutor(
+        resolution=1.0,
+        gradient_file=gradient_file,
+        mast_file=mast_file,
+        temperature=122.0,
+        domain="continental",
+        output_dir=output_dir,
+    )
+
+    assert volume > 0
+
+
+def test_oceanic_volume_does_not_require_mast_file(tmp_path):
+    gradient_file = tmp_path / "gradients.csv"
+    output_dir = tmp_path / "volume_outputs"
+    pd.DataFrame({"lat": [0.5], "lon": [10.5], "gradient": [30.0]}).to_csv(gradient_file, index=False)
+
+    volume = lithoVolume(Namespace()).calcutor(
+        resolution=1.0,
+        gradient_file=gradient_file,
+        mast_file=tmp_path / "not_needed_for_oceanic.csv",
+        temperature=122.0,
+        domain="oceanic",
+        output_dir=output_dir,
+    )
+
+    assert volume > 0

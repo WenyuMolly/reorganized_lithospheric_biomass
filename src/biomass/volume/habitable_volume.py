@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 import argparse
-import math
 import os
 import time
 from datetime import datetime
@@ -10,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from biomass.io import PROJECT_ROOT
+from biomass.preprocessing.process_mast_file import _lat_to_1deg_center, _lon_to_1deg_center
 
 # resolution is not certain
 # drop elevation in the features
@@ -25,16 +25,21 @@ class lithoVolume:
                        'oceanic':     28.304}  # °C km-1
 
     def calcutor(self, resolution, gradient_file, mast_file, temperature, domain, output_dir):
-        volume_sum = 0
+        if domain not in self.rmse_g:
+            raise ValueError(f"Unknown lithospheric domain: {domain}")
+
         rmse = self.rmse_g[domain] # °C km-1
         df = pd.read_csv(gradient_file)
-        df_mast = pd.read_csv(mast_file)
+        required_gradient_columns = {"lat", "lon", "gradient"}
+        missing_gradient_columns = required_gradient_columns.difference(df.columns)
+        if missing_gradient_columns:
+            raise ValueError(
+                f"Gradient file {gradient_file} is missing columns: "
+                f"{sorted(missing_gradient_columns)}"
+            )
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        df['maxdepth'] = np.nan
-        df['maxdepth_sd'] = np.nan
-        df['volume'] = np.nan
-        gradient = df['gradient'].map(lambda x: x+0.1)
+        gradient = df['gradient'].astype(float) + 0.1
 
         # Clip gradient to 1st and 99th percentile
         lower = np.percentile(gradient, 1)
@@ -42,24 +47,52 @@ class lithoVolume:
         print(f"Clipping gradient between {lower:.3f} and {upper:.3f}")
         gradient = np.clip(gradient, lower, upper)  
 
-        for i, g in enumerate(gradient):
-            lat, lon = df.loc[i, ['lat', 'lon']]
-            lonLen = 111.32*(abs(math.cos(math.radians(df.loc[i,'lat']))))*resolution
-            square_km2  = lonLen*111.32*resolution
-            mast = df_mast.loc[
-                (df_mast['Latitude'] == lat) & (df_mast['Longitude'] == lon),
-                'Mean_Temperature_C'
-            ].iloc[0]
-            T0 = mast if domain == 'continental' else 4.0
-            depth_km = (temperature - T0) / g
-            # propagate gradient RMSE to depth SD
-            depth_sd = (temperature - T0) / g**2 * rmse
-            
-            df.at[i, 'maxdepth'] = depth_km
-            df.at[i, 'maxdepth_sd'] = depth_sd
-            cell_vol = square_km2 * depth_km
-            df.at[i, 'volume']  = cell_vol
-            volume_sum += cell_vol
+        if domain == 'continental':
+            df_mast = pd.read_csv(mast_file)
+            required_mast_columns = {"Latitude", "Longitude", "Mean_Temperature_C"}
+            missing_mast_columns = required_mast_columns.difference(df_mast.columns)
+            if missing_mast_columns:
+                raise ValueError(
+                    f"MAST file {mast_file} is missing columns: {sorted(missing_mast_columns)}"
+                )
+
+            # Both sources are treated as 1 degree grid cells. Normalising here
+            # avoids fragile float equality and reconciles 0--360 with -180--180 longitude.
+            mast_lookup = df_mast.assign(
+                _mast_lat=df_mast["Latitude"].map(_lat_to_1deg_center),
+                _mast_lon=df_mast["Longitude"].map(_lon_to_1deg_center),
+            )
+            mast_lookup = (
+                mast_lookup.groupby(["_mast_lat", "_mast_lon"], as_index=False)["Mean_Temperature_C"]
+                .mean()
+                .rename(columns={"Mean_Temperature_C": "_mast_temperature"})
+            )
+            df["_mast_lat"] = df["lat"].map(_lat_to_1deg_center)
+            df["_mast_lon"] = df["lon"].map(_lon_to_1deg_center)
+            df = df.merge(mast_lookup, on=["_mast_lat", "_mast_lon"], how="left", validate="many_to_one")
+            unmatched = df["_mast_temperature"].isna()
+            if unmatched.any():
+                examples = df.loc[unmatched, ["lat", "lon", "_mast_lat", "_mast_lon"]].head(5)
+                raise ValueError(
+                    f"No MAST temperature for {int(unmatched.sum())} continental grid cells. "
+                    f"Example coordinates:\n{examples.to_string(index=False)}"
+                )
+            surface_temperature = df["_mast_temperature"].to_numpy(dtype=float)
+        else:
+            surface_temperature = np.full(len(df), 4.0, dtype=float)
+
+        gradient = np.asarray(gradient, dtype=float)
+        latitudes = df["lat"].to_numpy(dtype=float)
+        lon_len = 111.32 * np.abs(np.cos(np.radians(latitudes))) * resolution
+        square_km2 = lon_len * 111.32 * resolution
+        depth_km = (temperature - surface_temperature) / gradient
+        depth_sd = (temperature - surface_temperature) / gradient**2 * rmse
+
+        df["maxdepth"] = depth_km
+        df["maxdepth_sd"] = depth_sd
+        df["volume"] = square_km2 * depth_km
+        volume_sum = float(df["volume"].sum())
+        df.drop(columns=["_mast_lat", "_mast_lon", "_mast_temperature"], errors="ignore", inplace=True)
 
         df.to_csv(output_dir / ("inference_and_depth_to_%.1f_calculation_%s.csv" % (temperature, domain)), index=False)
         print('The %s lithospheric volume is %.5f km^3' % (domain, volume_sum))
