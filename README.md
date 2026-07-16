@@ -30,6 +30,8 @@ tests/                               Regression tests
 Reference outputs are stored under `runs/*/submitted/`. New long-running
 analyses are written to timestamped folders under `runs/` by default. Set
 `BIOMASS_RUN_ID` to group multiple commands into one named run directory.
+The curated reference output for the revision's oceanic Table S4 is
+[`runs/oceanic/submitted/2026-07-16_final_table_s4_1000_draws/`](runs/oceanic/submitted/2026-07-16_final_table_s4_1000_draws/).
 
 ## Installation
 
@@ -94,7 +96,44 @@ when you need to regenerate the model files.
 The geothermal wrapper runs from `runs/geothermal/`, so the commands below use
 paths relative to that directory for `--data_path` and model-file arguments.
 
-Optional oceanic retraining command:
+For a safe end-to-end training-pipeline check, use a non-baseline attempt name
+such as `test`. Training starts from a new estimator; it does not resume from
+or modify an existing `myModel*.model` file.
+
+```bash
+uv run python scripts/geothermal/baseline_xgboost.py \
+  --Attempt test \
+  --Run oceanic_final \
+  --data_path ../../data/raw/geothermal_model_final_data/split_ocean_1x1.csv \
+  --device cpu
+```
+
+```bash
+uv run python scripts/geothermal/baseline_xgboost.py \
+  --Attempt test \
+  --Run continental_final \
+  --data_path ../../data/raw/geothermal_model_final_data/split_ocean_1x1.csv \
+  --is_land \
+  --device cpu
+```
+
+The default search is `random` with five-fold cross-validation. These are full
+training runs, not lightweight smoke tests. `--device cuda` is the default;
+use it only when `nvidia-smi` confirms that a compatible GPU is available.
+
+To deliberately regenerate the baseline model locations, replace `test` with
+`1st` in the commands above. This overwrites files under
+`runs/geothermal/1stAttempt/` and should only be done when intentionally
+rebuilding the baseline.
+
+The training output directory contains `myModel<Attempt>.model`,
+`arguments.json`, the CV table, train/test splits, scores, predictions, and
+plots. In `Scores_<Run>.txt`, the second value is the held-out test-set R2;
+the first value is the training-set score. `Error_Scores_<Run>.txt` evaluates
+the combined train/test data and is a diagnostic rather than an independent
+generalization metric.
+
+The following is the explicit baseline oceanic retraining command:
 
 ```bash
 uv run python scripts/geothermal/baseline_xgboost.py \
@@ -102,10 +141,11 @@ uv run python scripts/geothermal/baseline_xgboost.py \
   --Run oceanic_final \
   --run_type train \
   --params_algorithm random \
-  --data_path ../../data/raw/geothermal_model_final_data/split_ocean_1x1.csv
+  --data_path ../../data/raw/geothermal_model_final_data/split_ocean_1x1.csv \
+  --device cpu
 ```
 
-Optional continental retraining command:
+The corresponding explicit continental baseline command is:
 
 ```bash
 uv run python scripts/geothermal/baseline_xgboost.py \
@@ -114,10 +154,13 @@ uv run python scripts/geothermal/baseline_xgboost.py \
   --run_type train \
   --params_algorithm random \
   --is_land \
-  --data_path ../../data/raw/geothermal_model_final_data/split_ocean_1x1.csv
+  --data_path ../../data/raw/geothermal_model_final_data/split_ocean_1x1.csv \
+  --device cpu
 ```
 
-Training outputs are written under `runs/geothermal/1stAttempt/`.
+Training outputs are written under `runs/geothermal/1stAttempt/`. Change
+`--device cpu` to `--device cuda` only after confirming that an NVIDIA GPU is
+available and not occupied.
 
 ### 3. Run Geothermal-Gradient Inference
 
