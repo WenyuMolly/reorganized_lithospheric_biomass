@@ -38,8 +38,16 @@ def test_continental_inputs_and_reference_outputs_are_available():
         assert path.exists()
         assert path.stat().st_size > 0
 
-    assert (PROJECT_ROOT / "runs/continental/submitted/modified_magnabosco").exists()
-    assert (PROJECT_ROOT / "runs/continental/submitted/original_magnabosco").exists()
+    reference_root = PROJECT_ROOT / "runs/continental/submitted/2026-07-18_reference_summaries"
+    expected_reference_outputs = [
+        reference_root / "modified_magnabosco/CSF_bootstrap_total_biomass_and_mse.csv",
+        reference_root / "modified_magnabosco/temperature_model_total_biomass.csv",
+        reference_root / "original_magnabosco/Origin_CSF_bootstrap_total_biomass_and_mse.csv",
+        reference_root / "original_magnabosco/Origin_temperature_model_total_biomass.csv",
+    ]
+    for path in expected_reference_outputs:
+        assert path.exists()
+        assert path.stat().st_size > 0
 
 
 def test_continental_environment_check_lists_required_packages():

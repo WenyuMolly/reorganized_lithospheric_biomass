@@ -32,6 +32,8 @@ analyses are written to timestamped folders under `runs/` by default. Set
 `BIOMASS_RUN_ID` to group multiple commands into one named run directory.
 The curated reference output for the revision's oceanic Table S4 is
 [`runs/oceanic/submitted/2026-07-16_final_table_s4_1000_draws/`](runs/oceanic/submitted/2026-07-16_final_table_s4_1000_draws/).
+Compact reference summaries for the modified and original continental workflows
+are stored in [`runs/continental/submitted/2026-07-18_reference_summaries/`](runs/continental/submitted/2026-07-18_reference_summaries/).
 
 ## Installation
 
