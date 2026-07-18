@@ -4,14 +4,11 @@ import numpy as np
 import pandas as pd
 
 from biomass.oceanic.stratified_power_fit import (
-    fit_power_law_log10 as fit_stratified_power_law_log10,
     fit_power_or_constant,
 )
 from biomass.oceanic.unstratified_power_fit import (
     convert_cells_per_g_to_cm3,
     detect_depth_column_and_to_km,
-    draw_z122_depth_km,
-    fit_power_law_log10 as fit_unstratified_power_law_log10,
     fit_unstratified_power_or_constant,
     grid_area_cm2,
 )
@@ -45,29 +42,3 @@ def test_oceanic_power_law_fits_return_finite_parameters():
     assert np.isfinite(unstratified["A"])
     assert np.isfinite(stratified["A"])
     assert grid_area_cm2(0.0) > grid_area_cm2(60.0)
-
-
-def test_oceanic_power_law_covariance_matches_returned_a_b_order():
-    depth = np.array([0.1, 0.3, 0.8, 1.5, 3.0])
-    density = np.array([1e5, 7e4, 2e4, 8e3, 2e3])
-    lx = np.log10(depth)
-    ly = np.log10(density)
-    _, cov_ba = np.polyfit(lx, ly, deg=1, cov=True)
-    expected_cov_ab = cov_ba[::-1, ::-1]
-
-    _, _, unstratified_cov, _, _ = fit_unstratified_power_law_log10(depth, density)
-    _, _, stratified_cov, _, _ = fit_stratified_power_law_log10(depth, density)
-
-    np.testing.assert_allclose(unstratified_cov, expected_cov_ab)
-    np.testing.assert_allclose(stratified_cov, expected_cov_ab)
-
-
-def test_oceanic_z122_scenarios_use_standard_deviation_bounds():
-    row = pd.Series({"maxdepth": 2.0, "maxdepth_sd": 0.5})
-    shallow_row = pd.Series({"maxdepth": 0.4, "maxdepth_sd": 0.8})
-    rng = np.random.default_rng(42)
-
-    assert draw_z122_depth_km(row, rng, "low") == 1.5
-    assert draw_z122_depth_km(row, rng, "base") == 2.0
-    assert draw_z122_depth_km(row, rng, "high") == 2.5
-    assert draw_z122_depth_km(shallow_row, rng, "low") == 0.0

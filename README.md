@@ -317,4 +317,7 @@ Run the Python tests with:
 uv run pytest
 ```
 
-The test suite includes lightweight workflow checks for geothermal-gradient model training/inference, habitable-volume calculation, oceanic biomass fitting utilities, and continental biomass script/data organization.
+The common test suite covers geothermal-gradient model training/inference,
+run-directory and CSV I/O helpers, habitable-volume calculation, and core
+oceanic biomass fitting utilities. Continental R workflows are validated by
+running their documented workflow commands in an R-enabled environment.
