@@ -61,7 +61,7 @@ VOLUME_CM3_CLIP_MAX = 1e22   # cm^3 per cell per layer
 CELLCOUNT_CLIP_MAX = 1e35    # cells per cell per layer
 EXTREME_CELLCOUNT_WARN = 1e33
 
-DEBUG_FIRST_DRAW_ONLY = True
+DEBUG_FIRST_DRAW_ONLY = False
 DEBUG_FIRST_N_CELLS = 5
 
 def parse_args() -> argparse.Namespace:

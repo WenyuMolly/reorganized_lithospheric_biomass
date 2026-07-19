@@ -56,3 +56,7 @@ figures/generated/
 # Logs and temporary files
 *.log
 *.tmp
+.~*
+._*
+*.swp
+*~

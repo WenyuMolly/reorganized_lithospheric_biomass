@@ -24,16 +24,22 @@ data/processed/                      Curated and intermediate inputs
 runs/                                Generated tabular outputs
 figures/benchmarks/                  Reference figures
 figures/generated/                   Regenerated figures
-tests/                               Regression tests
+tests/                               Common Python tests
 ```
 
-Reference outputs are stored under `runs/*/submitted/`. New long-running
-analyses are written to timestamped folders under `runs/` by default. Set
-`BIOMASS_RUN_ID` to group multiple commands into one named run directory.
-The curated reference output for the revision's oceanic Table S4 is
-[`runs/oceanic/submitted/2026-07-16_final_table_s4_1000_draws/`](runs/oceanic/submitted/2026-07-16_final_table_s4_1000_draws/).
-Compact reference summaries for the modified and original continental workflows
-are stored in [`runs/continental/submitted/2026-07-18_reference_summaries/`](runs/continental/submitted/2026-07-18_reference_summaries/).
+New long-running analyses are written to timestamped folders under `runs/` by
+default. Set `BIOMASS_RUN_ID` to group multiple commands into one named run
+directory.
+
+Reference outputs are stored under `runs/*/submitted/`.
+
+Set a run id before running volume and biomass workflows when several commands
+should write to the same run directory:
+
+```bash
+export BIOMASS_RUN_ID=$(date +%Y%m%d_%H%M%S)
+```
+
 
 ## Installation
 
@@ -49,11 +55,11 @@ Run Python commands through the managed environment:
 uv run python scripts/preprocessing/tab_file_processor.py --help
 ```
 
-### R Installation (Required for Continental Biomass)
+### R Installation (Required for Continental Lithospheric Biomass)
 
 The Python `uv` environment does not install R or R packages. Install R and the
 packages required by the Magnabosco continental scripts before running the
-continental workflows in Step 6. Verify the local R environment with:
+continental workflows in Step 5. Verify the local R environment with:
 
 ```bash
 Rscript scripts/continental/check_environment.R
@@ -65,106 +71,20 @@ the R version and loaded-package provenance alongside its numerical outputs.
 
 ## Workflow
 
-### 1. Process Mean Annual Surface Temperature
 
-Optional ERA5 download, if `data/raw/mast/era5_2024_monthly.nc` is not already
-present and CDS credentials are configured:
+### 1. Geothermal-Gradient Models
 
-```bash
-uv run python scripts/preprocessing/mast_get_by_cds.py
-```
-
-```bash
-uv run python scripts/preprocessing/process_mast_file.py \
-  --input data/raw/mast/era5_2024_monthly.nc \
-  --regridded-output data/processed/mast/global_mean_temperature_1deg.csv
-```
-
-The generated `data/processed/mast/global_mean_temperature_1deg.csv` is used as the surface-temperature input for the habitable-volume calculation.
-The raw ERA5 NetCDF is expected at `data/raw/mast/era5_2024_monthly.nc`; the processing step also writes an intermediate full-resolution table,
-`data/processed/mast/global_mean_temperature_2024.csv`.
-
-### 2. Geothermal-Gradient Models
-
-Pre-trained geothermal-gradient models are expected at:
+Pre-trained geothermal-gradient models are stored at:
 
 ```text
 runs/geothermal/1stAttempt/oceanic_final/myModel1st.model
 runs/geothermal/1stAttempt/continental_final/myModel1st.model
 ```
 
-If these files are present, skip directly to inference in Step 3. Retrain only
-when you need to regenerate the model files.
-The geothermal wrapper runs from `runs/geothermal/`, so the commands below use
-paths relative to that directory for `--data_path` and model-file arguments.
+You can skip directly to inference in Step 2. Retrain only when you need to
+regenerate the model files.
 
-For a safe end-to-end training-pipeline check, use a non-baseline attempt name
-such as `test`. Training starts from a new estimator; it does not resume from
-or modify an existing `myModel*.model` file.
-
-```bash
-uv run python scripts/geothermal/baseline_xgboost.py \
-  --Attempt test \
-  --Run oceanic_final \
-  --data_path ../../data/raw/geothermal_model_final_data/split_ocean_1x1.csv \
-  --device cpu
-```
-
-```bash
-uv run python scripts/geothermal/baseline_xgboost.py \
-  --Attempt test \
-  --Run continental_final \
-  --data_path ../../data/raw/geothermal_model_final_data/split_ocean_1x1.csv \
-  --is_land \
-  --device cpu
-```
-
-The default search is `random` with five-fold cross-validation. These are full
-training runs, not lightweight smoke tests. `--device cuda` is the default;
-use it only when `nvidia-smi` confirms that a compatible GPU is available.
-
-To deliberately regenerate the baseline model locations, replace `test` with
-`1st` in the commands above. This overwrites files under
-`runs/geothermal/1stAttempt/` and should only be done when intentionally
-rebuilding the baseline.
-
-The training output directory contains `myModel<Attempt>.model`,
-`arguments.json`, the CV table, train/test splits, scores, predictions, and
-plots. In `Scores_<Run>.txt`, the second value is the held-out test-set R2;
-the first value is the training-set score. `Error_Scores_<Run>.txt` evaluates
-the combined train/test data and is a diagnostic rather than an independent
-generalization metric.
-
-The following is the explicit baseline oceanic retraining command:
-
-```bash
-uv run python scripts/geothermal/baseline_xgboost.py \
-  --Attempt 1st \
-  --Run oceanic_final \
-  --run_type train \
-  --params_algorithm random \
-  --data_path ../../data/raw/geothermal_model_final_data/split_ocean_1x1.csv \
-  --device cpu
-```
-
-The corresponding explicit continental baseline command is:
-
-```bash
-uv run python scripts/geothermal/baseline_xgboost.py \
-  --Attempt 1st \
-  --Run continental_final \
-  --run_type train \
-  --params_algorithm random \
-  --is_land \
-  --data_path ../../data/raw/geothermal_model_final_data/split_ocean_1x1.csv \
-  --device cpu
-```
-
-Training outputs are written under `runs/geothermal/1stAttempt/`. Change
-`--device cpu` to `--device cuda` only after confirming that an NVIDIA GPU is
-available and not occupied.
-
-### 3. Run Geothermal-Gradient Inference
+### 2. Run Geothermal-Gradient Inference
 
 ```bash
 uv run python scripts/geothermal/baseline_xgboost.py \
@@ -177,13 +97,7 @@ uv run python scripts/geothermal/baseline_xgboost.py \
 
 This writes `runs/geothermal/1stAttempt/total_oceanic.csv` and `runs/geothermal/1stAttempt/total_continental.csv`.
 
-### 4. Calculate Habitable Lithospheric Volume
-
-Optional: set a run id before running volume and biomass workflows.
-
-```bash
-export BIOMASS_RUN_ID=$(date +%Y%m%d_%H%M%S)
-```
+### 3. Calculate Habitable Lithospheric Volume
 
 ```bash
 uv run python scripts/volume/habitable_volume.py \
@@ -195,29 +109,12 @@ uv run python scripts/volume/habitable_volume.py \
 
 New volume outputs are written to `runs/volume/$BIOMASS_RUN_ID/`, or to a new
 timestamped folder under `runs/volume/` when `BIOMASS_RUN_ID` is unset.
-Reference volume outputs are stored in `runs/volume/submitted/results/`.
-The oceanic biomass scripts in Step 5 read the reference/submitted volume table
-from `runs/volume/submitted/results/` by default. To use a newly generated
-volume run, replace or copy the corresponding
-`inference_and_depth_to_122.0_calculation_oceanic.csv` into that submitted
-results directory before running the oceanic biomass scripts.
 
-### 5. Run Oceanic Lithospheric Biomass Estimates
-
-Optional intermediate-data preparation: convert PANGAEA TAB files. This is not
-required when using the curated `data/raw/oceanic/oceanic_cell_densities.xlsx`
-workbook directly.
-
-```bash
-uv run python scripts/preprocessing/tab_file_processor.py \
-  --input-dir data/raw/oceanic/pangaea_exp357/tab_files \
-  --output data/processed/oceanic/pangaea_exp357_cell_abundance_merged_corrected.csv \
-  --write-individual \
-  --individual-output-dir data/processed/oceanic/pangaea_exp357_csv_files
-```
+### 4. Run Oceanic Lithospheric Biomass Estimates
 
 Always pass either `--exclude-shallow` or `--include-shallow` when reproducing
-the manuscript oceanic biomass workflows; do not rely on script defaults.
+the manuscript oceanic biomass workflows.
+
 `--exclude-shallow` removes the shallow/seawater-contacted reference set used in
 the manuscript sensitivity comparison, whereas `--include-shallow` keeps those
 observations.
@@ -250,34 +147,9 @@ uv run python scripts/oceanic/unstratified_power_fit.py --include-shallow
 uv run python scripts/oceanic/stratified_power_fit.py --include-shallow
 ```
 
-Oceanic geothermal z122 uncertainty sensitivity for both shallow-excluded and
-shallow-included datasets:
-
-```bash
-uv run python scripts/sensitivity/summarize_oceanic_geothermal_z122_uncertainty.py \
-  --dataset both \
-  --method all \
-  --n-draws 1000 \
-  --seed 42
-```
-
-This runs the existing stratified/unstratified log10-bootstrap and power-law MC
-scripts with `--z122-scenario low`, `base`, and `high`. The wrapper defaults to
-`--dataset without-shallow` if no dataset is specified. Outputs are written
-under `runs/oceanic/geothermal_z122_uncertainty/$BIOMASS_RUN_ID/`, or under a
-new timestamped folder when `BIOMASS_RUN_ID` is unset. Avoid `--reuse-existing`
-for formal reruns unless the existing scenario folders are known to match the
-intended code, inputs, seed, and draw count.
-
-Oceanic cell-density sensitivity figure:
-
-```bash
-uv run python scripts/oceanic/plot_cell_density_violin.py
-```
-
 Oceanic scripts read `data/raw/oceanic/oceanic_cell_densities.xlsx`, `data/raw/oceanic/ecm/ECM1.txt`, and the volume table in `runs/volume/submitted/results/`.
 
-### 6. Run Continental Lithospheric Biomass Estimates
+### 5. Run Continental Lithospheric Biomass Estimates
 
 The Python wrapper runs every R script in a workflow with one shared,
 timestamped run identifier. Modified continental workflow:
@@ -294,10 +166,18 @@ uv run python scripts/continental/run_workflow.py \
   --workflow original_magnabosco
 ```
 
-Pass `--run-id NAME` to assign a meaningful shared output name. The resulting
-files are written to `runs/continental/<run-id>/<workflow>/`. The underlying
-R scripts can still be called directly, but then set `BIOMASS_RUN_ID` first to
-keep all scripts in the same output directory.
+Use `--run-id NAME` to assign one shared output identifier to all R scripts in
+the selected workflow. This option takes precedence over `BIOMASS_RUN_ID`.
+
+If `--run-id` is omitted, the wrapper uses `BIOMASS_RUN_ID` when it is set;
+otherwise it creates one timestamp automatically. Outputs are written to:
+
+`runs/continental/<run-id>/<workflow>/`
+
+When running an R script directly rather than through the Python wrapper, set
+`BIOMASS_RUN_ID` yourself to keep separately invoked scripts in the same output
+directory.
+
 
 ## Data Notes
 
@@ -321,3 +201,19 @@ The common test suite covers geothermal-gradient model training/inference,
 run-directory and CSV I/O helpers, habitable-volume calculation, and core
 oceanic biomass fitting utilities. Continental R workflows are validated by
 running their documented workflow commands in an R-enabled environment.
+
+### Optional: Process Mean Annual Surface Temperature
+
+The habitable-volume calculation requires
+`data/processed/mast/global_mean_temperature_1deg.csv`. It is included with
+the repository. To regenerate it from the supplied ERA5 input:
+
+```bash
+uv run python scripts/preprocessing/process_mast_file.py \
+  --input data/raw/mast/era5_2024_monthly.nc \
+  --regridded-output data/processed/mast/global_mean_temperature_1deg.csv
+```
+
+The optional ERA5 download command is `uv run python
+scripts/preprocessing/mast_get_by_cds.py`; it requires configured CDS
+credentials.
